@@ -1,7 +1,7 @@
-function [barycentric_func] = barycentric_compute_func(w, phi_interpolant, D_interpolant)
+function [barycentric_func] = barycentric_compute_func(w, D_interpolant, phi_interpolant, D)
 % Returns polynomial function given barycentric weights and function values
 % on interpolation mesh
 d = length(w);
-denom = @(x) w'./(repmat(x, 1, d) - D_interpolant');
-barycentric_func = @(x) sum(denom(x).*phi_interpolant', 2)./sum(denom(x), 2);
+denom = 1./(repmat(D, 1, d) - D_interpolant');
+barycentric_func = (denom * (phi_interpolant.*w)) ./ (denom*w) ;
 end

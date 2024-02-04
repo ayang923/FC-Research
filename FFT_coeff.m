@@ -1,7 +1,7 @@
 function [C_n] = FFT_coeff(phi_D)
 % Computes coefficients of Fourier Series from discretized grid using FFT
 % Assumes phi_D is value of some continuous function on x = 0 to x = 1
-% over discrete x mesh.
+% over discrete x mesh, not including x=1;
 
 % phi_D should be a column vector
 
