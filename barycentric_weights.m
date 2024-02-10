@@ -1,9 +1,9 @@
-function [w] = barycentric_weights(x_mesh)
+function w = barycentric_weights(x_mesh)
 % Computes barycentric weights for interpolation dependent only on x_mesh
 
 d = length(x_mesh);
 
-[W_j, W_k] = meshgrid(x_mesh);
+[W_j, W_k] = meshgrid(x_mesh*4);
 W_j(logical(eye(d))) = 1;
 W_k(logical(eye(d))) = 0;
 
