@@ -66,14 +66,24 @@ classdef Q_patch_obj
         
         function [xi, eta, converged] = inverse_M_p(obj, x, y)
             err_guess = @(x, y, v) transpose(obj.M_p(v(1), v(2))) - [x; y];
-            [v_guess, converged] = newton_solve(@(v) err_guess(x, y, v), obj.J, [0; 0], 1e-15, 100);
+            initial_guess = [(obj.xi_start + obj.xi_end)/2; (obj.xi_start + obj.xi_end)/2];
+            [v_guess, converged] = newton_solve(@(v) err_guess(x, y, v), obj.J, initial_guess, 1e-15, 100);
             xi = v_guess(1);
             eta = v_guess(2);
         end
         
         function [f_xy, phi_xy] = locally_compute(obj, x, y, d)
             % d is degree of interpolation
-            [xi, eta] = obj.inverse_M_p(x, y);
+            [xi, eta, converged] = obj.inverse_M_p(x, y);
+            
+            % check if xi, eta are within bounds of Q
+            if ~converged || (xi > obj.xi_end || xi < obj.xi_start) || (eta > obj.eta_end || eta < obj.eta_start)
+                f_xy = nan;
+                phi_xy = nan;
+                return
+            end
+            
+            % partition of unity value
             phi_xy = obj.phi(xi, eta);
             
             h_xi = (obj.xi_end-obj.xi_start)/obj.n_xi;
@@ -82,8 +92,6 @@ classdef Q_patch_obj
             % j to the immediate left of point
             xi_j = floor((xi-obj.xi_start)/h_xi);
             eta_j = floor((eta-obj.eta_start)/h_eta);
-            
-            if ()
             
             half_d =  floor((d+1)/2);
             if mod(d, 2) ~= 0
@@ -94,18 +102,32 @@ classdef Q_patch_obj
                 interpol_eta_j_mesh = transpose(eta_j-half_d:eta_j+half_d);
             end
 
-            interpol_xi_j_mesh = shift_idx_mesh(interpol_xi_j_mesh, 0, obj.n_xi+1);
-            interpol_eta_j_mesh = shift_idx_mesh(interpol_eta_j_mesh, 0, obj.n_eta+1);
+            interpol_xi_j_mesh = shift_idx_mesh(interpol_xi_j_mesh, 0, obj.n_xi);
+            interpol_eta_j_mesh = shift_idx_mesh(interpol_eta_j_mesh, 0, obj.n_eta);
             
             interpol_xi_mesh = h_xi*interpol_xi_j_mesh + obj.xi_start;
             interpol_eta_mesh = h_eta*interpol_eta_j_mesh + obj.eta_start;
             
+            % first 1D interpolation
             interpol_eta_exact = zeros(d+1, 1);
             for vert_idx = 1:d+1
                 interpol_eta_exact(vert_idx) = barylag([interpol_eta_mesh,  obj.f_XY(interpol_eta_j_mesh+1, interpol_xi_j_mesh(vert_idx)+1)], eta);
             end
             
+            % second 1D interpolation
             f_xy = barylag([interpol_xi_mesh, interpol_eta_exact], xi);
+        end
+        
+        function C2_fcont_patch = C2_FC(obj, C, d, A, Q)
+            h_xi = (obj.xi_end-obj.xi_start)/obj.n_xi;
+            h_eta = (obj.eta_end-obj.eta_start)/obj.n_eta;
+            
+            f_cont = fcont_gram_blend_C2(obj.f_XY, d, A, Q);
+            C2_fcont_patch = Q_patch_obj(obj.M_p, obj.J, C+obj.n_xi, C+obj.n_eta, obj.xi_start-C*h_xi, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_end, f_cont);
+        end
+        
+        function S_fcont_patch = S_FC(obj, C, d, A, Q)
+            
         end
     end
 end
