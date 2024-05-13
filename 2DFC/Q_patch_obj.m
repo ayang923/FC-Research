@@ -41,19 +41,21 @@ classdef Q_patch_obj
             obj.y_max = max(XY(:, 2));
         end
         
-        function phi_fh = phi(obj, xi, eta)
-            xi_0 = (obj.xi_start+obj.xi_end)/2;
-            eta_0 = (obj.eta_start+obj.eta_end)/2;
-            R_xi = (obj.xi_start-obj.xi_end);
-            R_eta = (obj.eta_start-obj.eta_end);
-
-            in_rectangle = xi <= obj.xi_end & xi >= obj.xi_start & eta <= obj.eta_end & eta >= obj.eta_start;
-            phi_fh = zeros(size(xi));
-            
-            phi_fh(in_rectangle) = exp(-1./(1-(4/R_xi.^2).*(xi(in_rectangle)-xi_0).^2)).*exp(-1./(1-(4/R_eta.^2).*(eta(in_rectangle)-eta_0).^2));
-%             max_sc = max(abs(eta), abs(xi));
-%             r_squared = (((xi-xi_0)/R_xi).^2 + ((eta-eta_0)/R_eta).^2);
-%             phi_fh(r_squared < 1) = exp(-1./(1-r_squared(r_squared < 1)));
+%         function phi_fh = phi(obj, xi, eta)
+%             xi_0 = (obj.xi_start+obj.xi_end)/2;
+%             eta_0 = (obj.eta_start+obj.eta_end)/2;
+%             R_xi = (obj.xi_start-obj.xi_end);
+%             R_eta = (obj.eta_start-obj.eta_end);
+% 
+%             in_rectangle = xi <= obj.xi_end & xi >= obj.xi_start & eta <= obj.eta_end & eta >= obj.eta_start;
+%             phi_fh = zeros(size(xi));
+%             
+%             phi_fh(in_rectangle) = exp(-1./(1-(4/R_xi.^2).*(xi(in_rectangle)-xi_0).^2)).*exp(-1./(1-(4/R_eta.^2).*(eta(in_rectangle)-eta_0).^2));
+%         end
+        
+        function [h_xi, h_eta] = h_mesh(obj)
+            h_xi =(obj.xi_end-obj.xi_start)./obj.n_xi;
+            h_eta = (obj.eta_end-obj.eta_start) ./ obj.n_eta;
         end
         
         function mesh = xi_mesh(obj)
@@ -76,6 +78,11 @@ classdef Q_patch_obj
             Y = reshape(xy(:, 2), size(XI));
         end
         
+        function patch_msk = in_patch(obj, xi, eta)
+            eps = 1e-14;
+            patch_msk = xi >= obj.xi_start-eps & xi <= obj.xi_end+eps & eta >= obj.eta_start-eps & eta <= obj.eta_end+eps;
+        end
+        
         function [xi, eta, converged] = inverse_M_p(obj, x, y)
             if x > obj.x_max || x < obj.x_min || y> obj.y_max || y < obj.y_min
                 xi = nan;
@@ -83,11 +90,22 @@ classdef Q_patch_obj
                 converged = false;
                 return
             end
+            N = 15;
+            xi_initial = unifrnd(obj.xi_start, obj.xi_end, N, 1);
+            eta_initial = unifrnd(obj.eta_start, obj.eta_end, N, 1);
+            
             err_guess = @(x, y, v) transpose(obj.M_p(v(1), v(2))) - [x; y];
-            initial_guess = [(obj.xi_start + obj.xi_end)/2; (obj.xi_start + obj.xi_end)/2];
-            [v_guess, converged] = newton_solve(@(v) err_guess(x, y, v), obj.J, initial_guess, 1e-15, 100);
-            xi = v_guess(1);
-            eta = v_guess(2);
+            eps =  1e-15;
+            for k = 1:N
+                initial_guess = [xi_initial(k); eta_initial(k)];
+                [v_guess, converged] = newton_solve(@(v) err_guess(x, y, v), obj.J, initial_guess,eps, 100);
+                
+                xi = v_guess(1);
+                eta = v_guess(2);
+                if converged && obj.in_patch(xi, eta)
+                    return
+                end
+            end
         end
         
         function [f_xy, phi_xy, in_range] = locally_compute(obj, x, y, d)
@@ -95,8 +113,8 @@ classdef Q_patch_obj
             [xi, eta, converged] = obj.inverse_M_p(x, y);
             
             % check if xi, eta are within bounds of Q
-            if ~converged || (xi > obj.xi_end || xi < obj.xi_start) || (eta > obj.eta_end || eta < obj.eta_start)
-                f_xy = nan;
+            if ~converged || ~obj.in_patch(xi, eta)
+                f_xy = converged;
                 phi_xy = nan;
                 in_range = false;
                 return
@@ -138,20 +156,6 @@ classdef Q_patch_obj
             in_range = true;
         end
         
-        function C2_fcont_patch = C2_FC(obj, C, d, A, Q)
-            h_xi = (obj.xi_end-obj.xi_start)/obj.n_xi;
-            h_eta = (obj.eta_end-obj.eta_start)/obj.n_eta;
-            
-            fcont = fcont_gram_blend_C2(obj.f_XY, d, A, Q);
-            C2_fcont_patch = Q_patch_obj(obj.M_p, obj.J, C+obj.n_xi, C+obj.n_eta, obj.xi_start-C*h_xi, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_end, fcont);
-        end
-        
-        function S_fcont_patch = S_FC(obj, C, d, A, Q)
-            h_eta = (obj.eta_end-obj.eta_start)/obj.n_eta;
-            
-            fcont = fcont_gram_blend_S(obj.f_XY, d, A, Q);
-            S_fcont_patch = Q_patch_obj(obj.M_p, obj.J, obj.n_xi, C+obj.n_eta, obj.xi_start, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_end, fcont);
-        end
     end
 end
 
