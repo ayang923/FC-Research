@@ -14,7 +14,7 @@ xn = x0;
 for i = 2:Nmax
     xn = xn - J(xn)\f(xn);
     
-    if norm(f(xn)) < tau
+    if max(abs(f(xn))) < tau
         break
     end
 end

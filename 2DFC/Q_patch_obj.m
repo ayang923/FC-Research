@@ -79,17 +79,17 @@ classdef Q_patch_obj
         end
         
         function patch_msk = in_patch(obj, xi, eta)
-            eps = 1e-14;
+            eps = 1e-15;
             patch_msk = xi >= obj.xi_start-eps & xi <= obj.xi_end+eps & eta >= obj.eta_start-eps & eta <= obj.eta_end+eps;
         end
         
+        function patch_msk = in_patch_exact(obj, xi, eta)
+            patch_msk =  xi >= obj.xi_start & xi <= obj.xi_end & eta >= obj.eta_start & eta <= obj.eta_end;
+        end
+        
         function [xi, eta, converged] = inverse_M_p(obj, x, y)
-            if x > obj.x_max || x < obj.x_min || y> obj.y_max || y < obj.y_min
-                xi = nan;
-                eta = nan;
-                converged = false;
-                return
-            end
+            % need to change randomization, not giving  consistently good
+            % results, probably ocnvergence issues.
             N = 15;
             xi_initial = unifrnd(obj.xi_start, obj.xi_end, N, 1);
             eta_initial = unifrnd(obj.eta_start, obj.eta_end, N, 1);
