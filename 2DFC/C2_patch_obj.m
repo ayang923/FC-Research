@@ -6,23 +6,30 @@ classdef C2_patch_obj < Q_patch_obj
     end
     
     methods
-        function obj = C2_patch_obj(M_p, J, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY)
+        function obj = C2_patch_obj(M_p, J, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi)
             %C2_PATCH_OBJ Construct an instance of this class
             %   Detailed explanation goes here
-            obj = obj@Q_patch_obj(M_p, J, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY);
+            obj = obj@Q_patch_obj(M_p, J, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi);
         end
         
-        function phi_fh = phi(obj, xi, eta)
-            xi_0 = obj.xi_start;
-            eta_0 = obj.eta_start;
-            R_xi = (obj.xi_end-obj.xi_start);
-            R_eta = (obj.eta_end-obj.eta_start);
-
-            in_rectangle =obj.in_patch(xi, eta);
-            phi_fh = zeros(size(xi));
-            
-            phi_fh(in_rectangle) = exp(-1./(1-(1/R_xi.^2).*(xi(in_rectangle)-xi_0).^2)).*exp(-1./(1-(1/R_eta.^2).*(eta(in_rectangle)-eta_0).^2));
-        end
+%         function phi_fh = phi(obj, xi, eta)
+%             xi_0 = obj.xi_end;
+%             eta_0 = obj.eta_end;
+%             R_xi = obj.xi_start - obj.xi_end;
+%             R_eta = obj.eta_start - obj.eta_end;
+% 
+% %             phi_1D = @(x) 10*x.^3 - 15*x.^4 + 6*x.^5;
+% %             phi_1D = @(x) 3*x.^2-2*x.^3;
+% %             phi_1D = @(x) 35*x.^4-84*x.^5+70*x.^6-20*x.^7;
+%             
+% %             phi_1D = @(x) 126*x.^5-420*x.^6+540*x.^7-315*x.^8+70*x.^9;
+%             phi_1D = @(x) erfc(6*(-2*x+1))/2;
+% 
+%             in_rectangle =  xi >= obj.xi_start & xi <= obj.xi_end & eta >= obj.eta_start & eta <= obj.eta_end;
+%             phi_fh = NaN(size(xi));
+%             
+%             phi_fh(in_rectangle) = phi_1D((xi(in_rectangle)-xi_0)/R_xi).*phi_1D((eta(in_rectangle)-eta_0)/R_eta);
+%         end
         
         function C2_fcont_patch = FC(obj, C, d, A, Q, phi_normalization)
             h_xi = (obj.xi_end-obj.xi_start)/obj.n_xi;
@@ -36,162 +43,137 @@ classdef C2_patch_obj < Q_patch_obj
                 fcont = fcont_gram_blend_C2(obj.f_XY, d, A, Q);
             end
             
-            C2_fcont_patch = C2_patch_obj(obj.M_p, obj.J, C+obj.n_xi, C+obj.n_eta, obj.xi_start-C*h_xi, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_end, fcont);
+            C2_fcont_patch = C2_patch_obj(obj.M_p, obj.J, C+obj.n_xi, C+obj.n_eta, obj.xi_start-C*h_xi, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_end, fcont, obj.phi);
         end
         
         function [C2_norm, xi_norm, eta_norm] = compute_phi_normalization(obj, window_patch_xi, window_patch_eta)
-            window_patch_xi_eta_mesh = window_patch_xi.eta_mesh();
-            window_patch_eta_eta_mesh = window_patch_eta.eta_mesh();
+            %computing corners of overlap on C2 patch
+            C2_xi_corner = [min(convert_window_boundary(obj, window_patch_xi, window_patch_xi.xi_start, true)) ; max(convert_window_boundary(obj, window_patch_xi, window_patch_xi.eta_end, false))];
+            C2_eta_corner = [max(convert_window_boundary(obj, window_patch_eta, window_patch_eta.xi_start, true)); min(convert_window_boundary(obj, window_patch_eta, window_patch_eta.eta_end, false))];
             
-            l_xi = 9; %length(window_patch_xi_eta_mesh);
-            l_eta =9; % length(window_patch_eta_eta_mesh);
+            % computation of phi
+            C2_R_xi = C2_xi_corner(1) - obj.xi_end;
+            C2_R_eta = C2_eta_corner(2) - obj.eta_end;
+            C2_xi_0 = obj.xi_end;
+            C2_eta_0 = obj.eta_end;
             
-            window_patch_xi_xy_bound = window_patch_xi.M_p(zeros(l_xi, 1), window_patch_xi_eta_mesh(1:l_xi));
-            window_patch_eta_xy_bound = window_patch_eta.M_p(zeros(l_eta, 1), window_patch_eta_eta_mesh(1:l_eta));
-           
-            C2_xi_bounds = zeros(l_xi, 2);
-            C2_eta_bounds = zeros(l_eta, 2);
-            for i=1:l_xi
-                [C2_xi_bounds(i, 1), C2_xi_bounds(i, 2), converged] = obj.inverse_M_p(window_patch_xi_xy_bound(i, 1), window_patch_xi_xy_bound(i, 2));
-                if ~converged
-                    disp("not converged")
-                end
-            end
-            for i=1:l_eta
-                [C2_eta_bounds(i, 1), C2_eta_bounds(i, 2), converged] = obj.inverse_M_p(window_patch_eta_xy_bound(i, 1), window_patch_eta_xy_bound(i, 2));
-                if ~converged
-                    disp("not converged")
-                end
-            end
-       
-            C2_xi_max = [min(C2_xi_bounds(:, 1)) ; max(C2_xi_bounds(:, 2))];
-            C2_eta_max = [max(C2_eta_bounds(:, 1)); min(C2_eta_bounds(:, 2))];
+            obj.phi = @(xi, eta) obj.phi_1D((xi-C2_xi_0)/C2_R_xi) .* obj.phi_1D((eta-C2_eta_0)./C2_R_eta);
+            
+            % computing corners of overlap on window patches
+            window_xi_corner = [max(convert_window_boundary(window_patch_xi, obj, obj.xi_end, true)); max(convert_window_boundary(window_patch_xi, obj, obj.eta_end, false))];
+            window_eta_corner = [max(convert_window_boundary(window_patch_eta, obj, obj.eta_end, true)); max(convert_window_boundary(window_patch_eta, obj, obj.xi_end, false))];
+
+            window_xi_R_xi = window_xi_corner(1) - window_patch_xi.xi_start;
+            window_xi_R_eta =  window_patch_xi.eta_start - window_xi_corner(2);
+            window_xi_xi_0 = window_patch_xi.xi_start;
+            window_xi_eta_0 = window_patch_xi.eta_end;
+            
+            window_patch_xi.phi = @(xi, eta) obj.phi_1D((xi-window_xi_xi_0)/window_xi_R_xi) .* obj.phi_1D((eta-window_xi_eta_0)./window_xi_R_eta);
+            
+            window_eta_R_xi = window_eta_corner(1) - window_patch_eta.xi_start;
+            window_eta_R_eta = window_patch_eta.eta_start - window_eta_corner(2);
+            window_eta_xi_0 = window_patch_eta.xi_start;
+            window_eta_eta_0 = window_patch_eta.eta_end;
+            
+            window_patch_eta.phi = @(xi, eta) obj.phi_1D((xi-window_eta_xi_0)/window_eta_R_xi) .* obj.phi_1D((eta-window_eta_eta_0)./window_eta_R_eta);
             
             [C2_XI, C2_ETA] = obj.xi_eta_mesh();
             C2_norm = obj.phi(C2_XI, C2_ETA);
+           
+            [xi_overlap_XI, xi_overlap_ETA, xi_overlap_XI_j, xi_overlap_ETA_j] = compute_overlap_mesh(obj, C2_xi_corner, 4);
+            [xi_overlap_X, xi_overlap_Y] = obj.convert_to_XY(xi_overlap_XI, xi_overlap_ETA);
             
-            [C2_h_xi, C2_h_eta] = obj.h_mesh();
+            [eta_overlap_XI, eta_overlap_ETA, eta_overlap_XI_j, eta_overlap_ETA_j] = compute_overlap_mesh(obj, C2_eta_corner, 2);
+            [eta_overlap_X, eta_overlap_Y] = obj.convert_to_XY(eta_overlap_XI, eta_overlap_ETA);
             
-            C2_xi_j_bounds = (C2_xi_max - [obj.xi_start; obj.eta_start])./ [C2_h_xi; C2_h_eta];
-            C2_xi_j_bounds = [max([ceil(C2_xi_j_bounds(1)); 0]); min([floor(C2_xi_j_bounds(2)); obj.n_eta])];
+            C2_norm = update_norm_arr(C2_norm, window_patch_xi, xi_overlap_X, xi_overlap_Y, xi_overlap_XI_j, xi_overlap_ETA_j);
+            C2_norm = update_norm_arr(C2_norm, window_patch_eta, eta_overlap_X, eta_overlap_Y, eta_overlap_XI_j, eta_overlap_ETA_j);
             
-            C2_eta_j_bounds = (C2_eta_max - [obj.xi_start; obj.eta_start])./ [C2_h_xi; C2_h_eta];
-            C2_eta_j_bounds = [min([floor(C2_eta_j_bounds(1)); obj.n_xi]); max([ceil(C2_eta_j_bounds(2)); 0])];
-            
-            [xi_overlap_XI_j, xi_overlap_ETA_j] = meshgrid(C2_xi_j_bounds(1):(obj.n_xi), 0:(C2_xi_j_bounds(2)));
-            xi_overlap_XI = xi_overlap_XI_j * C2_h_xi + obj.xi_start;
-            xi_overlap_ETA = xi_overlap_ETA_j * C2_h_eta + obj.eta_start;
-            xi_overlap_XY = obj.M_p(xi_overlap_XI(:), xi_overlap_ETA(:));
-            xi_overlap_X = reshape(xi_overlap_XY(:, 1), size(xi_overlap_XI));
-            xi_overlap_Y = reshape(xi_overlap_XY(:, 2), size(xi_overlap_XI));
-            
-            [eta_overlap_XI_j, eta_overlap_ETA_j] = meshgrid(0:C2_eta_j_bounds(1), C2_eta_j_bounds(2):obj.n_eta);
-            eta_overlap_XI = eta_overlap_XI_j * C2_h_xi + obj.xi_start;
-            eta_overlap_ETA = eta_overlap_ETA_j * C2_h_eta + obj.eta_start;
-            eta_overlap_XY = obj.M_p(eta_overlap_XI(:), eta_overlap_ETA(:));
-            eta_overlap_X = reshape(eta_overlap_XY(:, 1), size(eta_overlap_XI));
-            eta_overlap_Y = reshape(eta_overlap_XY(:, 2), size(eta_overlap_XI));
-            
-            max_window_xi = [window_patch_xi.xi_start; window_patch_xi.eta_start];
-            for i = 1:size(xi_overlap_XI, 1)
-                for j = 1:size(xi_overlap_XI, 2)
-                    C2_xi_i = xi_overlap_XI_j(i, j) + 1;
-                    C2_xi_j = xi_overlap_ETA_j(i, j) + 1;
-                    [window_patch_xi_xi, window_patch_xi_eta, converged] = window_patch_xi.inverse_M_p(xi_overlap_X(i, j), xi_overlap_Y(i, j));
-                    if ~converged
-                        disp("not converged C2")
-                    end
-                    if converged && window_patch_xi.in_patch(window_patch_xi_xi, window_patch_xi_eta)
-                        C2_norm(C2_xi_j, C2_xi_i) = C2_norm(C2_xi_j, C2_xi_i) + window_patch_xi.window_phi(window_patch_xi_xi, window_patch_xi_eta);
-
-                        if window_patch_xi_xi > max_window_xi(1) && window_patch_xi_xi <= window_patch_xi.xi_end
-                            max_window_xi(1) = window_patch_xi_xi;
-                        end
-                        if window_patch_xi_eta > max_window_xi(2) && window_patch_xi_eta <= window_patch_xi.eta_end
-                            max_window_xi(2) = window_patch_xi_eta;
-                        end
-                    end
-                end
-            end
-            
-            max_window_eta = [window_patch_eta.xi_start; window_patch_eta.eta_start];
-            for i = 1:size(eta_overlap_XI, 1)
-                for j = 1:size(eta_overlap_XI, 2)
-                    C2_eta_i = eta_overlap_XI_j(i, j) + 1;
-                    C2_eta_j = eta_overlap_ETA_j(i, j) + 1;
-                    [window_patch_eta_xi, window_patch_eta_eta, converged] = window_patch_eta.inverse_M_p(eta_overlap_X(i, j), eta_overlap_Y(i, j));
-                    if ~converged
-                        disp("not converged C2")
-                    end
-                    if converged && window_patch_eta.in_patch(window_patch_eta_xi, window_patch_eta_eta)
-                        C2_norm(C2_eta_j, C2_eta_i) = C2_norm(C2_eta_j, C2_eta_i) + window_patch_eta.window_phi(window_patch_eta_xi, window_patch_eta_eta);
-
-                        if window_patch_eta_xi > max_window_eta(1) && window_patch_eta_xi <= window_patch_eta.xi_end
-                            max_window_eta(1) = window_patch_eta_xi;
-                        end
-                        if window_patch_eta_eta > max_window_eta(2) && window_patch_eta_eta <= window_patch_eta.eta_end
-                            max_window_eta(2) = window_patch_eta_eta;
-                        end
-                    end
-                end
-            end
             
             [xi_window_XI, xi_window_ETA] = window_patch_xi.xi_eta_mesh();
             xi_norm = window_patch_xi.window_phi(xi_window_XI, xi_window_ETA);
             
-            [window_xi_h_xi, window_xi_h_eta] = window_patch_xi.h_mesh();
-            window_xi_j_bounds = (max_window_xi - [window_patch_xi.xi_start; window_patch_xi.eta_start])./ [window_xi_h_xi; window_xi_h_eta];
-            window_xi_j_bounds = [min([ceil(window_xi_j_bounds(1)); obj.n_xi]); min([ceil(window_xi_j_bounds(2)); obj.n_eta])];
+            [window_xi_overlap_XI, window_xi_overlap_ETA, window_xi_overlap_XI_j, window_xi_overlap_ETA_j] = compute_overlap_mesh(window_patch_xi, window_xi_corner, 3);
+            [window_xi_overlap_X, window_xi_overlap_Y] = window_patch_xi.convert_to_XY(window_xi_overlap_XI, window_xi_overlap_ETA);
             
-            [window_xi_overlap_XI_j, window_xi_overlap_ETA_j] = meshgrid(0:window_xi_j_bounds(1), 0:window_xi_j_bounds(2));
-            window_xi_overlap_XI = window_xi_overlap_XI_j * window_xi_h_xi + window_patch_xi.xi_start;
-            window_xi_overlap_ETA = window_xi_overlap_ETA_j * window_xi_h_eta + window_patch_xi.eta_start;
-            window_xi_overlap_XY = window_patch_xi.M_p(window_xi_overlap_XI(:), window_xi_overlap_ETA(:));
-            window_xi_overlap_X = reshape(window_xi_overlap_XY(:, 1), size(window_xi_overlap_XI));
-            window_xi_overlap_Y = reshape(window_xi_overlap_XY(:, 2), size(window_xi_overlap_XI));
+            xi_norm = update_norm_arr(xi_norm, obj, window_xi_overlap_X, window_xi_overlap_Y, window_xi_overlap_XI_j, window_xi_overlap_ETA_j);
             
-            for i = 1:size(window_xi_overlap_XI, 1)
-                for j = 1:size(window_xi_overlap_XI, 2)
-                    window_xi_i = window_xi_overlap_XI_j(i, j) + 1;
-                    window_xi_j = window_xi_overlap_ETA_j(i, j) + 1;
-                    [C2_xi, C2_eta, converged] = obj.inverse_M_p(window_xi_overlap_X(i, j), window_xi_overlap_Y(i, j));
-                    if ~converged
-                        disp("not converged xi")
-                    end
-                    if converged && obj.in_patch(C2_xi, C2_eta)
-                        xi_norm(window_xi_j, window_xi_i) =  xi_norm(window_xi_j, window_xi_i) + obj.phi(C2_xi, C2_eta);
-                    end
-                end
-            end
-            
+
             [eta_window_XI, eta_window_ETA] = window_patch_eta.xi_eta_mesh();
             eta_norm = window_patch_eta.window_phi(eta_window_XI, eta_window_ETA);
             
-            [window_eta_h_xi, window_eta_h_eta] = window_patch_eta.h_mesh();
-            window_eta_j_bounds = (max_window_eta - [window_patch_eta.xi_start; window_patch_eta.eta_start])./ [window_eta_h_xi; window_eta_h_eta];
-            window_eta_j_bounds = [min([ceil(window_eta_j_bounds(1)); obj.n_xi]); min([ceil(window_eta_j_bounds(2)); obj.n_eta])];
+            [window_eta_overlap_XI, window_eta_overlap_ETA, window_eta_overlap_XI_j, window_eta_overlap_ETA_j] = compute_overlap_mesh(window_patch_eta, window_eta_corner, 3);
+            [window_eta_overlap_X, window_eta_overlap_Y] = window_patch_eta.convert_to_XY(window_eta_overlap_XI, window_eta_overlap_ETA);
             
-            [window_eta_overlap_XI_j, window_eta_overlap_ETA_j] = meshgrid(0:window_eta_j_bounds(1), 0:window_eta_j_bounds(2));
-            window_eta_overlap_XI = window_eta_overlap_XI_j * window_eta_h_xi + window_patch_eta.xi_start;
-            window_eta_overlap_ETA = window_eta_overlap_ETA_j * window_eta_h_eta + window_patch_eta.eta_start;
-            window_eta_overlap_XY = window_patch_eta.M_p(window_eta_overlap_XI(:), window_eta_overlap_ETA(:));
-            window_eta_overlap_X = reshape(window_eta_overlap_XY(:, 1), size(window_eta_overlap_XI));
-            window_eta_overlap_Y = reshape(window_eta_overlap_XY(:, 2), size(window_eta_overlap_XI));
-            
-            for i = 1:size(window_eta_overlap_XI, 1)
-                for j = 1:size(window_eta_overlap_XI, 2)
-                    window_eta_i = window_eta_overlap_XI_j(i, j) + 1;
-                    window_eta_j = window_eta_overlap_ETA_j(i, j) + 1;
-                    [C2_xi, C2_eta, converged] = obj.inverse_M_p(window_eta_overlap_X(i, j), window_eta_overlap_Y(i, j));
-                    if ~converged
-                        disp("not converged eta")
-                    end
-                    if converged && obj.in_patch(C2_xi, C2_eta)
-                        eta_norm(window_eta_j, window_eta_i) =  eta_norm(window_eta_j, window_eta_i) + obj.phi(C2_xi, C2_eta);
-                    end
-                end
-            end
+            eta_norm = update_norm_arr(eta_norm, obj, window_eta_overlap_X, window_eta_overlap_Y, window_eta_overlap_XI_j, window_eta_overlap_ETA_j);
         end
     end
 end
 
+function main_patch_boundary_mesh = convert_window_boundary(main_patch, window_patch, fixed_boundary_val, xi)
+    %Parameters: main_patch (convert coordinates to), window_patch (convert
+    %coordinates from), fixed_boundary_val(0 or 1), which boundary we're
+    %using in window_patch (xi, eta) coordinates, xi (true or false) if true, we are fixing xi, if false, we are
+    %fixing eta
+    if xi
+        window_patch_eta_mesh = window_patch.eta_mesh();
+        l = length(window_patch_eta_mesh);
+        window_patch_xy_bounds = window_patch.M_p(fixed_boundary_val * ones(l, 1), window_patch_eta_mesh);
+    else
+        window_patch_xi_mesh = window_patch.xi_mesh();
+        l = length(window_patch_xi_mesh);
+        window_patch_xy_bounds = window_patch.M_p(window_patch_xi_mesh, fixed_boundary_val * ones(l, 1));
+    end
+    main_patch_boundary_coord = zeros(l, 2);
+    for i = 1:l
+        [main_patch_boundary_coord(i, 1), main_patch_boundary_coord(i, 2), converged] = main_patch.inverse_M_p(window_patch_xy_bounds(i, 1), window_patch_xy_bounds(i, 2));
+        if ~converged
+            warning("Nonconvergence in computing boundary mesh values")
+        end
+    end
+    if xi
+        main_patch_boundary_mesh = main_patch_boundary_coord(:, 1);
+    else
+        main_patch_boundary_mesh = main_patch_boundary_coord(:, 2);
+    end
+end
+
+function [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_overlap_mesh(main_patch, xi_eta_corner, quadrant_overlap)
+    [h_xi, h_eta] = main_patch.h_mesh();
+    j_corner =  (xi_eta_corner - [main_patch.xi_start; main_patch.eta_start])./ [h_xi; h_eta];
+    
+    if quadrant_overlap == 1
+        j_corner_grid = [ceil(j_corner(1)); ceil(j_corner(2))];
+        [XI_j, ETA_j] = meshgrid(max([j_corner_grid(1); 0]):main_patch.n_xi, max([j_corner_grid(2); 0]):main_patch.n_eta);
+    elseif quadrant_overlap == 2
+        j_corner_grid = [floor(j_corner(1)); ceil(j_corner(2))];
+        [XI_j, ETA_j] = meshgrid(0:min([main_patch.n_xi; j_corner_grid(1)]), max([j_corner_grid(2); 0]):main_patch.n_eta);
+    elseif quadrant_overlap == 3
+        j_corner_grid = [floor(j_corner(1)); floor(j_corner(2))];
+        [XI_j, ETA_j] = meshgrid(0:min([main_patch.n_xi; j_corner_grid(1)]), 0:min([main_patch.n_eta; j_corner_grid(2)]));
+    elseif quadrant_overlap == 4
+        j_corner_grid = [ceil(j_corner(1)); floor(j_corner(2))];
+        [XI_j, ETA_j] = meshgrid(max([j_corner_grid(1); 0]):main_patch.n_xi, 0:min([main_patch.n_eta; j_corner_grid(2)]));
+    else
+        error("Invalid Quadrant Number")
+    end
+    XI_overlap = XI_j * h_xi + main_patch.xi_start;
+    ETA_overlap = ETA_j * h_xi + main_patch.eta_start;
+end
+
+function [norm_arr] = update_norm_arr(norm_arr, window_patch, overlap_X, overlap_Y, overlap_XI_j, overlap_ETA_j)
+    for i = 1:size(overlap_X, 1)
+        for j = 1:size(overlap_X, 2)
+            [window_patch_xi, window_patch_eta, converged] = window_patch.inverse_M_p(overlap_X(i, j), overlap_Y(i, j));
+
+            xi_i = overlap_XI_j(i, j) + 1;
+            xi_j = overlap_ETA_j(i, j) + 1;
+
+            if converged && window_patch.in_patch(window_patch_xi, window_patch_eta)
+                norm_arr(xi_j, xi_i) = norm_arr(xi_j, xi_i) + window_patch.phi(window_patch_xi, window_patch_eta);
+            elseif ~converged
+                warning("Nonconvergence in computing C2_norm")
+            end                
+        end
+    end
+end

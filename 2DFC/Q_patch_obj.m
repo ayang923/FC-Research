@@ -1,4 +1,4 @@
-classdef Q_patch_obj
+classdef Q_patch_obj < handle
     %UNTITLED Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -16,10 +16,12 @@ classdef Q_patch_obj
         x_max
         y_min
         y_max
+        phi_1D
+        phi
     end
     
     methods
-        function obj = Q_patch_obj(M_p, J, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY)
+        function obj = Q_patch_obj(M_p, J, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             obj.M_p = M_p;
@@ -39,19 +41,10 @@ classdef Q_patch_obj
             obj.x_max = max(XY(:, 1));
             obj.y_min = min(XY(:, 2));
             obj.y_max = max(XY(:, 2));
+            
+            obj.phi_1D = @(x) erfc(6*(-2*x+1))/2;
+            obj.phi = phi; %phi not defined until overlaps are given
         end
-        
-%         function phi_fh = phi(obj, xi, eta)
-%             xi_0 = (obj.xi_start+obj.xi_end)/2;
-%             eta_0 = (obj.eta_start+obj.eta_end)/2;
-%             R_xi = (obj.xi_start-obj.xi_end);
-%             R_eta = (obj.eta_start-obj.eta_end);
-% 
-%             in_rectangle = xi <= obj.xi_end & xi >= obj.xi_start & eta <= obj.eta_end & eta >= obj.eta_start;
-%             phi_fh = zeros(size(xi));
-%             
-%             phi_fh(in_rectangle) = exp(-1./(1-(4/R_xi.^2).*(xi(in_rectangle)-xi_0).^2)).*exp(-1./(1-(4/R_eta.^2).*(eta(in_rectangle)-eta_0).^2));
-%         end
         
         function [h_xi, h_eta] = h_mesh(obj)
             h_xi =(obj.xi_end-obj.xi_start)./obj.n_xi;
@@ -78,8 +71,14 @@ classdef Q_patch_obj
             Y = reshape(xy(:, 2), size(XI));
         end
         
+        function [X, Y] = convert_to_XY(obj, XI, ETA)
+            XY = obj.M_p(XI(:), ETA(:));
+            X = reshape(XY(:, 1), size(XI));
+            Y = reshape(XY(:, 2), size(ETA));
+        end
+        
         function patch_msk = in_patch(obj, xi, eta)
-            eps = 1e-15;
+            eps = 0;
             patch_msk = xi >= obj.xi_start-eps & xi <= obj.xi_end+eps & eta >= obj.eta_start-eps & eta <= obj.eta_end+eps;
         end
         
@@ -87,22 +86,40 @@ classdef Q_patch_obj
             patch_msk =  xi >= obj.xi_start & xi <= obj.xi_end & eta >= obj.eta_start & eta <= obj.eta_end;
         end
         
+        function patch_msk = in_patch_interior(obj, xi, eta)
+            patch_msk =  xi > obj.xi_start & xi < obj.xi_end & eta > obj.eta_start & eta < obj.eta_end;
+        end
+        
+        function [xi, eta] = round_boundary_points(obj, xi, eta)
+            eps = 1e-14;
+            
+            xi(abs(xi - obj.xi_start) < eps) = obj.xi_start;
+            xi(abs(xi-obj.xi_end) < eps) = obj.xi_end;
+            eta(abs(eta - obj.eta_start) < eps) = obj.eta_start;
+            eta(abs(eta-obj.eta_end) < eps) = obj.eta_end;
+        end
+        
         function [xi, eta, converged] = inverse_M_p(obj, x, y)
             % need to change randomization, not giving  consistently good
             % results, probably ocnvergence issues.
-            N = 15;
-            xi_initial = unifrnd(obj.xi_start, obj.xi_end, N, 1);
-            eta_initial = unifrnd(obj.eta_start, obj.eta_end, N, 1);
+            N = 20;
+            
+            N_segment = ceil(N/4);
+            xi_mesh = transpose(linspace(obj.xi_start, obj.xi_end, N_segment+1));
+            eta_mesh = transpose(linspace(obj.eta_start, obj.eta_end, N_segment+1));
+            
+            xi_initial = [xi_mesh(1:end-1); xi_mesh(1:end-1); ones(N_segment, 1)*obj.xi_start; ones(N_segment, 1)*obj.xi_end];
+            eta_initial = [ones(N_segment, 1)*obj.eta_start; ones(N_segment, 1)*obj.eta_end; eta_mesh(1:end-1); eta_mesh(1:end-1)];
             
             err_guess = @(x, y, v) transpose(obj.M_p(v(1), v(2))) - [x; y];
-            eps =  1e-15;
+            eps =  1e-14;
             for k = 1:N
                 initial_guess = [xi_initial(k); eta_initial(k)];
                 [v_guess, converged] = newton_solve(@(v) err_guess(x, y, v), obj.J, initial_guess,eps, 100);
                 
-                xi = v_guess(1);
-                eta = v_guess(2);
-                if converged && obj.in_patch(xi, eta)
+                [xi, eta] = obj.round_boundary_points(v_guess(1), v_guess(2));                
+          
+                if converged && obj.in_patch_exact(xi, eta)
                     return
                 end
             end
@@ -114,11 +131,14 @@ classdef Q_patch_obj
             
             % check if xi, eta are within bounds of Q
             if ~converged || ~obj.in_patch(xi, eta)
-                f_xy = converged;
-                phi_xy = nan;
+
+                f_xy = [xi, eta, max(obj.M_p(xi, eta) - [x, y]), obj.in_patch(xi, eta)];
+                phi_xy = [obj.xi_start, obj.xi_end, obj.eta_start, obj.eta_end];
                 in_range = false;
                 return
             end
+            
+            in_range = true;
             
             % partition of unity value
             phi_xy = obj.phi(xi, eta);
@@ -153,7 +173,6 @@ classdef Q_patch_obj
             
             % second 1D interpolation
             f_xy = barylag([interpol_xi_mesh, interpol_eta_exact], xi);
-            in_range = true;
         end
         
     end
