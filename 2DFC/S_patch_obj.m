@@ -21,46 +21,6 @@ classdef S_patch_obj < Q_patch_obj
             obj.h = h;
         end
         
-%         function phi_fh = phi(obj, xi, eta)
-%             % one sided phi function            
-%             xi_0 = obj.xi_start;
-%             R_xi = obj.xi_end-obj.xi_start;
-%             eta_0 = obj.eta_end;
-%             R_eta = obj.eta_start - obj.eta_end;
-% 
-% %             phi_1D = @(x) 10*x.^3-15*x.^4+6*x.^5;
-% %             phi_1D = @(x) 3*x.^2-2*x.^3;
-% %             phi_1D = @(x) 35*x.^4-84*x.^5+70*x.^6-20*x.^7;
-% %             phi_1D = @(x) 126*x.^5-420*x.^6+540*x.^7-315*x.^8+70*x.^9;
-% 
-%             phi_1D = @(x) erfc(6*(-2*x+1))/2;
-% 
-%             in_rectangle = xi <= obj.xi_end & xi >= obj.xi_start & eta <= obj.eta_end & eta >= obj.eta_start;
-%             phi_fh = NaN(size(xi));
-%             
-%             phi_fh(in_rectangle) = phi_1D((xi(in_rectangle)-xi_0)/R_xi).*phi_1D((eta(in_rectangle)-eta_0)/R_eta);
-%         end
-        
-        function phi_fh = window_phi(obj, xi, eta)
-            % one sided phi function            
-            xi_0 = obj.xi_start;
-            R_xi = obj.xi_end-obj.xi_start;
-            eta_0 = obj.eta_end;
-            R_eta = obj.eta_start - obj.eta_end;
-
-%             phi_1D = @(x) 10*x.^3-15*x.^4+6*x.^5;
-%             phi_1D = @(x) 3*x.^2-2*x.^3;
-%             phi_1D = @(x) 35*x.^4-84*x.^5+70*x.^6-20*x.^7;
-%             phi_1D = @(x) 126*x.^5-420*x.^6+540*x.^7-315*x.^8+70*x.^9;
-
-            phi_1D = @(x) erfc(6*(-2*x+1))/2;
-
-            in_rectangle = xi <= obj.xi_end & xi >= obj.xi_start & eta <= obj.eta_end & eta >= obj.eta_start;
-            phi_fh = NaN(size(xi));
-            
-            phi_fh(in_rectangle) = phi_1D((xi(in_rectangle)-xi_0)/R_xi).*phi_1D((eta(in_rectangle)-eta_0)/R_eta);
-        end
-        
         function S_fcont_patch = FC(obj, C, d, A, Q, phi_normalization)
             h_eta = (obj.eta_end-obj.eta_start)/obj.n_eta;
             

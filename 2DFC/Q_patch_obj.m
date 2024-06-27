@@ -99,26 +99,37 @@ classdef Q_patch_obj < handle
             eta(abs(eta-obj.eta_end) < eps) = obj.eta_end;
         end
         
-        function [xi, eta, converged] = inverse_M_p(obj, x, y)
+        function [xi, eta, converged] = inverse_M_p(obj, x, y, initial_guesses)
             % need to change randomization, not giving  consistently good
             % results, probably ocnvergence issues.
-            N = 20;
+            % initial_guess is [xi_1, xi_2, xi_3, ...; eta_1, eta_2, eta_3,
+            % ...] matrix
             
-            N_segment = ceil(N/4);
-            xi_mesh = transpose(linspace(obj.xi_start, obj.xi_end, N_segment+1));
-            eta_mesh = transpose(linspace(obj.eta_start, obj.eta_end, N_segment+1));
+            if isnan(initial_guesses)
+                N = 20;
             
-            xi_initial = [xi_mesh(1:end-1); xi_mesh(1:end-1); ones(N_segment, 1)*obj.xi_start; ones(N_segment, 1)*obj.xi_end];
-            eta_initial = [ones(N_segment, 1)*obj.eta_start; ones(N_segment, 1)*obj.eta_end; eta_mesh(1:end-1); eta_mesh(1:end-1)];
-            
+                N_segment = ceil(N/4);
+                xi_mesh = transpose(linspace(obj.xi_start, obj.xi_end, N_segment+1));
+                eta_mesh = transpose(linspace(obj.eta_start, obj.eta_end, N_segment+1));
+
+                xi_initial = [xi_mesh(1:end-1); xi_mesh(1:end-1); ones(N_segment, 1)*obj.xi_start; ones(N_segment, 1)*obj.xi_end];
+                eta_initial = [ones(N_segment, 1)*obj.eta_start; ones(N_segment, 1)*obj.eta_end; eta_mesh(1:end-1); eta_mesh(1:end-1)];
+                
+                initial_guesses = [xi_initial'; eta_initial'];
+                
+                disp('initial guess nan')
+            end
+
             err_guess = @(x, y, v) transpose(obj.M_p(v(1), v(2))) - [x; y];
             eps =  1e-14;
-            for k = 1:N
-                initial_guess = [xi_initial(k); eta_initial(k)];
+            if size(initial_guesses, 2) == 8
+                disp('nan initial guess')
+            end
+            for k = 1:size(initial_guesses, 2)
+                initial_guess = initial_guesses(:, k);
                 [v_guess, converged] = newton_solve(@(v) err_guess(x, y, v), obj.J, initial_guess,eps, 100);
                 
-                [xi, eta] = obj.round_boundary_points(v_guess(1), v_guess(2));                
-          
+                [xi, eta] = obj.round_boundary_points(v_guess(1), v_guess(2));                                                
                 if converged && obj.in_patch_exact(xi, eta)
                     return
                 end
