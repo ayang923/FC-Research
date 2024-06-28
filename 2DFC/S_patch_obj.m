@@ -26,12 +26,12 @@ classdef S_patch_obj < Q_patch_obj
             
             [XI, ETA] = obj.xi_eta_mesh();
             if ~isnan(phi_normalization)
-                fcont = fcont_gram_blend_S(obj.f_XY.*obj.window_phi(XI, ETA)./phi_normalization, d, A, Q);
+                fcont = fcont_gram_blend_S(obj.f_XY.*obj.phi(XI, ETA)./phi_normalization, d, A, Q);
             else
                 fcont = fcont_gram_blend_S(obj.f_XY, d, A, Q);
             end
             
-            S_fcont_patch = S_patch_obj(obj.M_p_general, obj.J_general, obj.n_xi, C+obj.n_eta, obj.xi_start, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_end, fcont, obj.h);
+            S_fcont_patch = S_patch_obj(obj.M_p_general, obj.J_general, obj.n_xi, C+obj.n_eta, obj.xi_start, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_end, fcont, obj.h, obj.phi);
         end
     end
 end

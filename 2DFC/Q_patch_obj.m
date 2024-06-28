@@ -65,10 +65,17 @@ classdef Q_patch_obj < handle
         
         function [X, Y] = xy_mesh(obj)
             [XI, ETA] = obj.xi_eta_mesh();
-            xy = obj.M_p(XI(:), ETA(:));
-            
-            X = reshape(xy(:, 1), size(XI));
-            Y = reshape(xy(:, 2), size(XI));
+            [X, Y] = obj.convert_to_XY(XI, ETA);
+        end
+        
+        function [boundary_mesh_xi, boundary_mesh_eta] = boundary_mesh(obj)
+            boundary_mesh_xi = [ones(obj.n_eta, 1)*obj.xi_start; obj.xi_mesh(); ones(obj.n_eta, 1)*obj.xi_end; flip(obj.xi_mesh())];
+            boundary_mesh_eta = [obj.eta_mesh(); ones(obj.n_xi, 1)*obj.eta_end; flip(obj.eta_mesh); ones(obj.n_xi, 1)*obj.eta_start];
+        end
+        
+        function [boundary_mesh_x, boundary_mesh_y] = boundary_mesh_xy(obj)
+            [boundary_mesh_xi, boundary_mesh_eta] = obj.boundary_mesh();
+            [boundary_mesh_x, boundary_mesh_y] = obj.convert_to_XY(boundary_mesh_xi, boundary_mesh_eta);
         end
         
         function [X, Y] = convert_to_XY(obj, XI, ETA)
@@ -115,9 +122,7 @@ classdef Q_patch_obj < handle
                 xi_initial = [xi_mesh(1:end-1); xi_mesh(1:end-1); ones(N_segment, 1)*obj.xi_start; ones(N_segment, 1)*obj.xi_end];
                 eta_initial = [ones(N_segment, 1)*obj.eta_start; ones(N_segment, 1)*obj.eta_end; eta_mesh(1:end-1); eta_mesh(1:end-1)];
                 
-                initial_guesses = [xi_initial'; eta_initial'];
-                
-                disp('initial guess nan')
+                initial_guesses = [xi_initial'; eta_initial'];                
             end
 
             err_guess = @(x, y, v) transpose(obj.M_p(v(1), v(2))) - [x; y];
@@ -136,23 +141,15 @@ classdef Q_patch_obj < handle
             end
         end
         
-        function [f_xy, phi_xy, in_range] = locally_compute(obj, x, y, d)
-            % d is degree of interpolation
-            [xi, eta, converged] = obj.inverse_M_p(x, y);
-            
+        function [f_xy, in_range] = locally_compute(obj, xi, eta, d)
             % check if xi, eta are within bounds of Q
-            if ~converged || ~obj.in_patch(xi, eta)
-
-                f_xy = [xi, eta, max(obj.M_p(xi, eta) - [x, y]), obj.in_patch(xi, eta)];
-                phi_xy = [obj.xi_start, obj.xi_end, obj.eta_start, obj.eta_end];
+            if ~obj.in_patch(xi, eta)
+                f_xy = nan;
                 in_range = false;
                 return
             end
             
             in_range = true;
-            
-            % partition of unity value
-            phi_xy = obj.phi(xi, eta);
             
             h_xi = (obj.xi_end-obj.xi_start)/obj.n_xi;
             h_eta = (obj.eta_end-obj.eta_start)/obj.n_eta;
