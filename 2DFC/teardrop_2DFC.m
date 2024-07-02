@@ -4,17 +4,18 @@ clc; clear; close all
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 l_theta = @(theta) [2*sin(theta/2), -sin(theta)];
 
-scale_factor = 8;
+scale_factor = 2;
 
-n_C2 = 20 * scale_factor;
-n_S_h = 20 * scale_factor;
-h_S = 0.027 / scale_factor;
+h_R = 0.01 / scale_factor;
 
-n_S_w = 255 * scale_factor;
-h_R = 0.04 / scale_factor;
+n_C2 = 50 * scale_factor;
+n_S_h = 50 * scale_factor;
+h_S = 0.01 / scale_factor;
+
+n_S_w = 600 * scale_factor;
 
 C = 27;
-d = 6;
+d = 4;
 
 %% Loading FC Data
 load(['FC_data/A_d',num2str(d),'_C', num2str(27), '.mat']);
@@ -26,9 +27,9 @@ Q = double(Q);
 
 C2_patch = construct_C2_patch(f, 0.4, 2*pi-0.4, 0, n_C2, n_C2); % data associated with patch
 
-window_patch_xi = construct_S_patch(f, 0.1, 0.6, h_S, n_S_h, d+10);
-window_patch_eta = construct_S_patch(f, 2*pi-0.1, 2*pi-0.6, h_S, n_S_h, d+10);
-S_patch = construct_S_patch(f, 0.6, 2*pi-0.6, h_S, n_S_w, d+10);
+window_patch_xi = construct_S_patch(f, 0.1, 0.5, h_S, n_S_h, d+10);
+window_patch_eta = construct_S_patch(f, 2*pi-0.1, 2*pi-0.5, h_S, n_S_h, d+10);
+S_patch = construct_S_patch(f, 0.5, 2*pi-0.5, h_S, n_S_w, d+10);
 
 %% Computing window functions for C2 Patch
 [C2_norm, xi_norm, eta_norm] = C2_patch.compute_phi_normalization(window_patch_xi, window_patch_eta);
@@ -54,7 +55,7 @@ R = R_cartesian_mesh_obj(R_x_bounds(1), R_x_bounds(2), R_y_bounds(1), R_y_bounds
 
 % Fills interior with exact values and interpolates patch values onto grid
 for patch = fcont_patches
-    R.interpolate_patch(patch{1}, d)
+    R.interpolate_patch(patch{1}, d+3)
 end
 R.fill_interior(f);
 
@@ -65,10 +66,9 @@ R.compute_fc_coeffs()
 max(abs((f(X_err(err_interior_idx), Y_err(err_interior_idx)) - f_err(err_interior_idx)))) %l_infinity error
 
 err = abs((f(X_err(err_interior_idx), Y_err(err_interior_idx)) - f_err(err_interior_idx)));
-norm_err = err./max(err);
 
 figure;
-scatter(X_err(err_interior_idx), Y_err(err_interior_idx), 100, norm_err, 'filled');
+scatter(X_err(err_interior_idx), Y_err(err_interior_idx), 100, err, 'filled');
 
 % Add a color bar
 colorbar;

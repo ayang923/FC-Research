@@ -24,7 +24,7 @@ classdef C2_patch_obj < Q_patch_obj
                 fcont = fcont_gram_blend_C2(obj.f_XY, d, A, Q);
             end
             
-            C2_fcont_patch = C2_patch_obj(obj.M_p, obj.J, C+obj.n_xi, C+obj.n_eta, obj.xi_start-C*h_xi, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_end, fcont, obj.phi);
+            C2_fcont_patch = C2_patch_obj(obj.M_p, obj.J, C+obj.n_xi, C+obj.n_eta, obj.xi_start-(C)*h_xi, obj.xi_end, obj.eta_start-(C)*h_eta, obj.eta_end, fcont, obj.phi);
         end
         
         function [C2_norm, xi_norm, eta_norm] = compute_phi_normalization(obj, window_patch_xi, window_patch_eta)

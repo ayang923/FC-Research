@@ -52,15 +52,17 @@ classdef Q_patch_obj < handle
         end
         
         function mesh = xi_mesh(obj)
+            % TODO: reduce roundoff error
             mesh = transpose(linspace(obj.xi_start, obj.xi_end, obj.n_xi+1));
         end
         
         function mesh = eta_mesh(obj)
+            % TODO: reduce roundoff error
             mesh = transpose(linspace(obj.eta_start, obj.eta_end, obj.n_eta+1));
         end
         
         function [XI, ETA] = xi_eta_mesh(obj)
-            [XI, ETA] = meshgrid(obj.xi_mesh, obj.eta_mesh);
+            [XI, ETA] = meshgrid(obj.xi_mesh(), obj.eta_mesh());
         end
         
         function [X, Y] = xy_mesh(obj)
@@ -141,7 +143,7 @@ classdef Q_patch_obj < handle
             end
         end
         
-        function [f_xy, in_range] = locally_compute(obj, xi, eta, d)
+        function [f_xy, in_range] = locally_compute(obj, xi, eta, d, biperiodic)
             % check if xi, eta are within bounds of Q
             if ~obj.in_patch(xi, eta)
                 f_xy = nan;
@@ -151,8 +153,8 @@ classdef Q_patch_obj < handle
             
             in_range = true;
             
-            h_xi = (obj.xi_end-obj.xi_start)/obj.n_xi;
-            h_eta = (obj.eta_end-obj.eta_start)/obj.n_eta;
+            [h_xi, h_eta] = obj.h_mesh();
+            
             
             % j to the immediate left of point
             xi_j = floor((xi-obj.xi_start)/h_xi);
@@ -167,16 +169,27 @@ classdef Q_patch_obj < handle
                 interpol_eta_j_mesh = transpose(eta_j-half_d:eta_j+half_d);
             end
 
-            interpol_xi_j_mesh = shift_idx_mesh(interpol_xi_j_mesh, 0, obj.n_xi);
-            interpol_eta_j_mesh = shift_idx_mesh(interpol_eta_j_mesh, 0, obj.n_eta);
+            if ~biperiodic
+                interpol_xi_j_mesh = shift_idx_mesh(interpol_xi_j_mesh, 0, obj.n_xi);
+                interpol_eta_j_mesh = shift_idx_mesh(interpol_eta_j_mesh, 0, obj.n_eta);
+            end
             
             interpol_xi_mesh = h_xi*interpol_xi_j_mesh + obj.xi_start;
             interpol_eta_mesh = h_eta*interpol_eta_j_mesh + obj.eta_start;
             
+            if biperiodic
+                padded_f_XY = padarray(obj.f_XY, [d, d], 'both');
+            end
+            
             % first 1D interpolation
             interpol_eta_exact = zeros(d+1, 1);
             for vert_idx = 1:d+1
-                interpol_eta_exact(vert_idx) = barylag([interpol_eta_mesh,  obj.f_XY(interpol_eta_j_mesh+1, interpol_xi_j_mesh(vert_idx)+1)], eta);
+                if biperiodic
+                    interpol_val = padded_f_XY(interpol_eta_j_mesh+d+1, interpol_xi_j_mesh(vert_idx)+d+1);
+                else
+                    interpol_val = obj.f_XY(interpol_eta_j_mesh+1, interpol_xi_j_mesh(vert_idx)+1);
+                end
+                interpol_eta_exact(vert_idx) = barylag([interpol_eta_mesh, interpol_val], eta);
             end
             
             % second 1D interpolation

@@ -18,6 +18,7 @@ classdef R_cartesian_mesh_obj < handle
         boundary_X
         boundary_Y
         in_interior
+        interior_idxs
         f_R
         
         fc_coeffs
@@ -46,15 +47,17 @@ classdef R_cartesian_mesh_obj < handle
             obj.boundary_X = boundary_X;
             obj.boundary_Y = boundary_Y;
             obj.in_interior = inpolygon(obj.R_X, obj.R_Y, boundary_X,  boundary_Y);
+            obj.interior_idxs = obj.R_idxs(obj.in_interior);
+            
             obj.f_R = zeros(obj.n_y, obj.n_x);
         end
         
-        function interpolate_patch(obj, patch, d)
+        function interpolate_patch(obj, patch, d, biperiodic)
             hash_sig = 14;
             % constructs vector of idxs of points that are in both patch
             % and cartesian mesh
             [bound_X, bound_Y] = patch.boundary_mesh_xy();
-            in_patch = inpolygon(obj.R_X, obj.R_Y, bound_X, bound_Y) & ~obj.in_interior;
+            in_patch = inpolygon(obj.R_X, obj.R_Y, bound_X, bound_Y);% & ~obj.in_interior;
             R_patch_idxs = obj.R_idxs(in_patch);
             
             R_patch_X = obj.R_X(R_patch_idxs);
@@ -74,6 +77,8 @@ classdef R_cartesian_mesh_obj < handle
             for i = 1:length(R_patch_X)
                 P(mat2str([R_patch_X(i); R_patch_Y(i)], hash_sig)) = nan;
             end
+            
+            disp("start first pass");
 
             for i = 1:size(patch_X, 1)
                 for j = 1:size(patch_X, 2)
@@ -94,7 +99,9 @@ classdef R_cartesian_mesh_obj < handle
                         end
                     end
                 end
-            end          
+            end
+            
+            disp("start second pass")
             
             % second pass for points that aren't touched, could
             % theoretically modify so that we continuously do this until
@@ -131,15 +138,17 @@ classdef R_cartesian_mesh_obj < handle
                         end
                     end
                 end
-                if isempty(keys(nan_set))
+                if nan_set.Count == 0
                     break;
+                else
+                    disp(nan_set.Count);
                 end
             end
-            
+
             f_R_patch = zeros(size(R_patch_X));
             for i = 1:length(R_patch_X)
                 xi_eta_point = P(mat2str([R_patch_X(i); R_patch_Y(i)], hash_sig));
-                [f_R_patch(i), in_range] = patch.locally_compute(xi_eta_point(1), xi_eta_point(2), d);
+                [f_R_patch(i), in_range] = patch.locally_compute(xi_eta_point(1), xi_eta_point(2), d, biperiodic);
                 if ~in_range
                     disp('huh')
                 end
@@ -149,8 +158,7 @@ classdef R_cartesian_mesh_obj < handle
         
         function fill_interior(obj, f)
         % fills interior of function
-            interior_idxs = obj.R_idxs(obj.in_interior);
-            obj.f_R(interior_idxs) = f(obj.R_X(interior_idxs), obj.R_Y(interior_idxs));        
+            obj.f_R(obj.interior_idxs) = f(obj.R_X(obj.interior_idxs), obj.R_Y(obj.interior_idxs));        
         end
         
         function compute_fc_coeffs(obj)
@@ -159,7 +167,7 @@ classdef R_cartesian_mesh_obj < handle
         
         function [R_X_err, R_Y_err, f_interpolation, interior_idx] = ifft_interpolation(obj, h_new)
             n_x_err = round((obj.x_end+obj.h-h_new-obj.x_start)/h_new)+1;
-            n_y_err = round((obj.y_end+obj.h-h_new-obj.y_start)/h_new)+1;  
+            n_y_err = round((obj.y_end+obj.h-h_new-obj.y_start)/h_new)+1;
             
             x_err_mesh = transpose(round((linspace(obj.x_start, obj.x_end+obj.h-h_new, n_x_err)-obj.x_start)/h_new)*h_new+obj.x_start);
             y_err_mesh = transpose(round((linspace(obj.y_start, obj.y_end+obj.h-h_new, n_y_err)-obj.y_start)/h_new)*h_new+obj.y_start);
@@ -170,7 +178,7 @@ classdef R_cartesian_mesh_obj < handle
             n_y_diff = n_y_err - obj.n_y;
             
             padded_fc_coeffs = [zeros(ceil(n_y_diff/2), n_x_err); zeros(size(obj.fc_coeffs, 1), ceil(n_x_diff/2)) obj.fc_coeffs zeros(size(obj.fc_coeffs, 1), floor(n_x_diff/2)); zeros(floor(n_y_diff/2), n_x_err)];
-            f_interpolation = real((n_x_err*n_y_err)*ifft2(fftshift(padded_fc_coeffs)));
+            f_interpolation = real((n_x_err*n_y_err)*ifft2(ifftshift(padded_fc_coeffs)));
             
             idxs = reshape(1:numel(R_X_err), size(R_X_err));
             interior_idx = idxs(inpolygon(R_X_err, R_Y_err, obj.boundary_X, obj.boundary_Y));
