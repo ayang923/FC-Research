@@ -53,45 +53,41 @@ classdef R_cartesian_mesh_obj < handle
         end
         
         function interpolate_patch(obj, patch, d, biperiodic)
-            hash_sig = 14;
             % constructs vector of idxs of points that are in both patch
             % and cartesian mesh
             [bound_X, bound_Y] = patch.boundary_mesh_xy();
             in_patch = inpolygon(obj.R_X, obj.R_Y, bound_X, bound_Y);% & ~obj.in_interior;
             R_patch_idxs = obj.R_idxs(in_patch);
-            
-            R_patch_X = obj.R_X(R_patch_idxs);
-            R_patch_Y = obj.R_Y(R_patch_idxs);            
-            
+                        
             % computing initial "proximity map" with floor and ceil
             % operator
             [XI, ETA] = patch.xi_eta_mesh();
             [patch_X, patch_Y] = patch.convert_to_XY(XI, ETA);
 
-            floor_X = floor((patch_X-obj.x_start)/obj.h)*obj.h + obj.x_start;
-            ceil_X = ceil((patch_X-obj.x_start)/obj.h)*obj.h + obj.x_start;
-            floor_Y = floor((patch_Y-obj.y_start)/obj.h)*obj.h + obj.y_start;
-            ceil_Y = ceil((patch_Y-obj.y_start)/obj.h)*obj.h + obj.y_start;
-                        
-            P = containers.Map('KeyType', 'char', 'ValueType', 'any');
-            for i = 1:length(R_patch_X)
-                P(mat2str([R_patch_X(i); R_patch_Y(i)], hash_sig)) = nan;
+            floor_X_j = floor((patch_X-obj.x_start)/obj.h);
+            ceil_X_j = ceil((patch_X-obj.x_start)/obj.h);
+            floor_Y_j = floor((patch_Y-obj.y_start)/obj.h);
+            ceil_Y_j = ceil((patch_Y-obj.y_start)/obj.h);
+
+            P = containers.Map('KeyType', 'int32', 'ValueType', 'any');
+            for i = 1:length(R_patch_idxs)
+                P(R_patch_idxs(i)) = nan;
             end
-            
+
             disp("start first pass");
 
             for i = 1:size(patch_X, 1)
                 for j = 1:size(patch_X, 2)
-                    neighbors = [floor_X(i, j), floor_X(i, j), ceil_X(i, j), ceil_X(i, j); floor_Y(i, j), ceil_Y(i, j), floor_Y(i, j), ceil_Y(i, j)];
+                    neighbors = [floor_X_j(i, j), floor_X_j(i, j), ceil_X_j(i, j), ceil_X_j(i, j); floor_Y_j(i, j), ceil_Y_j(i, j), floor_Y_j(i, j), ceil_Y_j(i, j)];
                     for neighbor_i = 1:size(neighbors, 2)
-                        neighbor = neighbors(:, neighbor_i);
-                        str_neighbor = mat2str(neighbor, hash_sig);
+                        neighbor = neighbors(:, neighbor_i) + 1;
+                        patch_idx = sub2ind([obj.n_y, obj.n_x], neighbor(2), neighbor(1));
                         
-                        if isKey(P, str_neighbor)
-                            if isnan(P(str_neighbor))
-                                [xi, eta, converged] = patch.inverse_M_p(neighbor(1), neighbor(2), [XI(i, j); ETA(i, j)]);
+                        if isKey(P, patch_idx)
+                            if isnan(P(patch_idx))
+                                [xi, eta, converged] = patch.inverse_M_p((neighbor(1)-1)*obj.h + obj.x_start, (neighbor(2)-1)*obj.h + obj.y_start, [XI(i, j); ETA(i, j)]);
                                 if converged
-                                    P(str_neighbor) = [xi; eta];
+                                    P(patch_idx) = [xi; eta];
                                 else
                                     warning("Nonconvergence in interpolation")
                                 end
@@ -101,63 +97,51 @@ classdef R_cartesian_mesh_obj < handle
                 end
             end
             
-            disp("start second pass")
+            disp("construct nan map")
             
             % second pass for points that aren't touched, could
             % theoretically modify so that we continuously do this until
             % all points are touched
-            nan_set = containers.Map('KeyType', 'char', 'ValueType', 'logical');
-            while true
-                for key = keys(P)
-                    if isnan(P(key{1}))
-                        is_touched = false;
-                        
-                        pnt = eval(key{1});
-                        neighboridxs = [1 -1 0 0 1 1 -1 -1; 0 0 -1 1 1 -1 1 -1];
-                        for neighboridx_i = 1:size(neighboridxs, 2)
-                            neighboridx = neighboridxs(:, neighboridx_i);
-                            neighbor = pnt + neighboridx * obj.h;
-                            str_neighbor = mat2str(neighbor, hash_sig);
-                            if isKey(P, str_neighbor) && ~any(isnan((P(str_neighbor))))
-                                [xi, eta, converged] = patch.inverse_M_p(pnt(1), pnt(2), P(str_neighbor));
-                                if converged
-                                    P(key{1}) = [xi; eta];
-
-                                    is_touched = true;
-                                    if isKey(nan_set, key{1})
-                                        remove(nan_set, key{1});
-                                    end
-                                    break;
-                                else
-                                    warning("Nonconvergence in interpolation")
-                                end
-                            end
-                        end
-                        figure;
-                        scatter(patch_X(:), patch_Y(:))
-                        hold on;
-                        
-                        for key = keys(P)
-                            pnt = eval(key{1});
-                            if isnan(P(key{1}))
-                                scatter(pnt(1), pnt(2), 'r')
-                            end
-                        end
-                        if ~is_touched
-                            nan_set(key{1}) = true;
-                        end
-                    end
-                end
-                if nan_set.Count == 0
-                    break;
-                else
-                    disp(nan_set.Count);
+            
+            nan_set = containers.Map('KeyType', 'int32', 'ValueType', 'logical');
+            % first iterate through and construct nan set            
+            for key = keys(P)
+                if isnan(P(key{1}))
+                    nan_set(key{1}) = true;
                 end
             end
+                        
+            % pass through nan set until empty
+            while nan_set.Count > 0
+                for key = keys(nan_set)
+                    [i, j] = ind2sub([obj.n_y, obj.n_x], key{1});
+                    
+                    neighbor_shifts = [1 -1 0 0 1 1 -1 -1; 0 0 -1 1 1 -1 1 -1];
+                    is_touched = false;
+                    for neighbor_shift_i = 1:size(neighbor_shifts, 2)
+                        neighbor_shift = neighbor_shifts(:, neighbor_shift_i);
+                        neighbor = sub2ind([obj.n_y, obj.n_x], i+ neighbor_shift(1), j + neighbor_shift(2));
 
-            f_R_patch = zeros(size(R_patch_X));
-            for i = 1:length(R_patch_X)
-                xi_eta_point = P(mat2str([R_patch_X(i); R_patch_Y(i)], hash_sig));
+                        if isKey(P, neighbor) && ~any(isnan(P(neighbor)))
+                            [xi, eta, converged] = patch.inverse_M_p((j-1)*obj.h+obj.x_start, (i-1)*obj.h+obj.y_start, P(neighbor));
+                            if converged
+                                P(key{1}) = [xi; eta];
+                                is_touched = true;
+                                break;
+                            else
+                                warning("Nonconvergence in interpolation")
+                            end
+                        end
+                    end
+                    if is_touched
+                        remove(nan_set, key{1});
+                    end
+                end
+            end
+            
+            f_R_patch = zeros(size(R_patch_idxs));
+            for i = 1:length(R_patch_idxs)
+                xi_eta_point = P(R_patch_idxs(i));
                 [f_R_patch(i), in_range] = patch.locally_compute(xi_eta_point(1), xi_eta_point(2), d, biperiodic);
                 if ~in_range
                     disp('huh')
