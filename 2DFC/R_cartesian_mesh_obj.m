@@ -133,6 +133,16 @@ classdef R_cartesian_mesh_obj < handle
                                 end
                             end
                         end
+                        figure;
+                        scatter(patch_X(:), patch_Y(:))
+                        hold on;
+                        
+                        for key = keys(P)
+                            pnt = eval(key{1});
+                            if isnan(P(key{1}))
+                                scatter(pnt(1), pnt(2), 'r')
+                            end
+                        end
                         if ~is_touched
                             nan_set(key{1}) = true;
                         end
