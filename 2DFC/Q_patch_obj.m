@@ -18,6 +18,12 @@ classdef Q_patch_obj < handle
         y_max
         phi_1D
         phi
+        
+        fc_coeffs
+        freq_xi
+        freq_eta
+        N1
+        N2
     end
     
     methods
@@ -108,9 +114,16 @@ classdef Q_patch_obj < handle
             eta(abs(eta-obj.eta_end) < eps) = obj.eta_end;
         end
         
+        function compute_xi_eta_fc_coeffs(obj)
+            obj.fc_coeffs = fftshift(fft2(obj.f_XY) / numel(obj.f_XY));
+            
+            obj.freq_xi = -ceil((obj.n_xi)/2):floor(obj.n_xi/2);
+            obj.freq_eta = -ceil((obj.n_eta)/2):floor(obj.n_eta/2);
+            
+            [obj.N1, obj.N2] = meshgrid(obj.freq_xi, obj.freq_eta);
+        end
+        
         function [xi, eta, converged] = inverse_M_p(obj, x, y, initial_guesses)
-            % need to change randomization, not giving  consistently good
-            % results, probably ocnvergence issues.
             % initial_guess is [xi_1, xi_2, xi_3, ...; eta_1, eta_2, eta_3,
             % ...] matrix
             
@@ -143,6 +156,22 @@ classdef Q_patch_obj < handle
             end
         end
         
+        function [f_xy, in_range] = locally_compute_FFT(obj, xi, eta)
+            % check if xi, eta are within bounds of Q
+            if ~obj.in_patch(xi, eta)
+                f_xy = nan;
+                in_range = false;
+                return
+            end
+            
+            in_range = true;
+            [h_xi, h_eta] = obj.h_mesh();
+            L_xi = obj.xi_end + h_xi - obj.xi_start;
+            L_eta = obj.eta_end + h_eta - obj.eta_start;
+            
+            f_xy = real(sum(obj.fc_coeffs .* exp(2*pi*1i*(obj.N1.*(xi-obj.xi_start)/L_xi+obj.N2*(eta-obj.eta_start)/L_eta)), 'all'));
+        end
+        
         function [f_xy, in_range] = locally_compute(obj, xi, eta, d, biperiodic)
             % check if xi, eta are within bounds of Q
             if ~obj.in_patch(xi, eta)
@@ -152,10 +181,8 @@ classdef Q_patch_obj < handle
             end
             
             in_range = true;
-            
             [h_xi, h_eta] = obj.h_mesh();
-            
-            
+
             % j to the immediate left of point
             xi_j = floor((xi-obj.xi_start)/h_xi);
             eta_j = floor((eta-obj.eta_start)/h_eta);

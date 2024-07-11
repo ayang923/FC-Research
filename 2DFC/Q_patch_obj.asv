@@ -18,6 +18,12 @@ classdef Q_patch_obj < handle
         y_max
         phi_1D
         phi
+        
+        fc_coeffs
+        freq_xi
+        freq_eta
+        N1
+        N2
     end
     
     methods
@@ -108,9 +114,16 @@ classdef Q_patch_obj < handle
             eta(abs(eta-obj.eta_end) < eps) = obj.eta_end;
         end
         
+        function compute_xi_eta_fc_coeffs(obj)
+            obj.fc_coeffs = fftshift(fft2(obj.f_XY) / numel(obj.f_XY));
+            
+            obj.freq_xi = -ceil((obj.n_xi)/2):floor(obj.n_xi/2);
+            obj.freq_eta = -ceil((obj.n_eta)/2):floor(obj.n_eta/2);
+            
+            [obj.N1, obj.N2] = meshgrid(obj.freq_xi, obj.freq_eta);
+        end
+        
         function [xi, eta, converged] = inverse_M_p(obj, x, y, initial_guesses)
-            % need to change randomization, not giving  consistently good
-            % results, probably ocnvergence issues.
             % initial_guess is [xi_1, xi_2, xi_3, ...; eta_1, eta_2, eta_3,
             % ...] matrix
             
@@ -152,10 +165,9 @@ classdef Q_patch_obj < handle
             end
             
             in_range = true;
-            
             [h_xi, h_eta] = obj.h_mesh();
-            
-            
+                        
+
             % j to the immediate left of point
             xi_j = floor((xi-obj.xi_start)/h_xi);
             eta_j = floor((eta-obj.eta_start)/h_eta);
@@ -177,18 +189,14 @@ classdef Q_patch_obj < handle
             interpol_xi_mesh = h_xi*interpol_xi_j_mesh + obj.xi_start;
             interpol_eta_mesh = h_eta*interpol_eta_j_mesh + obj.eta_start;
             
-            padded_f_XY = padarray(obj.f_XY, [d, d], 'both');
+            if biperiodic
+                padded_f_XY = padarray(obj.f_XY, [d, d], 'both');
+            end
             
             % first 1D interpolation
             interpol_eta_exact = zeros(d+1, 1);
             for vert_idx = 1:d+1
                 if biperiodic
-                    eta_first_j = interpol_eta_j_mesh(1);
-                    eta_last_j = interpol_eta_j_mesh(end);
-                    if eta_first_j < =
-                        
-                    end
-                    [zeros()]
                     interpol_val = padded_f_XY(interpol_eta_j_mesh+d+1, interpol_xi_j_mesh(vert_idx)+d+1);
                 else
                     interpol_val = obj.f_XY(interpol_eta_j_mesh+1, interpol_xi_j_mesh(vert_idx)+1);

@@ -6,11 +6,11 @@ l_theta = @(theta) [2*sin(theta/2), -sin(theta)];
 
 scale_factor = 2;
 
-h_R = 0.01 / scale_factor;
+h_R = 0.013 / scale_factor;
 
 n_C2 = 50 * scale_factor;
 n_S_h = 50 * scale_factor;
-h_S = 0.01 / scale_factor;
+h_S = 0.013 / scale_factor;
 
 n_S_w = 600 * scale_factor;
 
@@ -27,9 +27,20 @@ Q = double(Q);
 
 C2_patch = construct_C2_patch(f, 0.4, 2*pi-0.4, 0, n_C2, n_C2); % data associated with patch
 
-window_patch_xi = construct_S_patch(f, 0.1, 0.5, h_S, n_S_h, d+10);
-window_patch_eta = construct_S_patch(f, 2*pi-0.1, 2*pi-0.5, h_S, n_S_h, d+10);
+window_patch_xi = construct_S_patch(f, 0.1, 0.5, h_S, n_S_h, n_C2);
+window_patch_eta = construct_S_patch(f, 2*pi-0.1, 2*pi-0.5, h_S, n_S_h, n_C2);
 S_patch = construct_S_patch(f, 0.5, 2*pi-0.5, h_S, n_S_w, d+10);
+
+figure;
+[X, Y] = S_patch.xy_mesh();
+scatter(X(:), Y(:))
+hold on;
+[X, Y] = C2_patch.xy_mesh();
+scatter(X(:), Y(:))
+[X, Y] = window_patch_xi.xy_mesh();
+scatter(X(:), Y(:))
+[X, Y] = window_patch_eta.xy_mesh();
+scatter(X(:), Y(:))
 
 %% Computing window functions for C2 Patch
 [C2_norm, xi_norm, eta_norm] = C2_patch.compute_phi_normalization(window_patch_xi, window_patch_eta);
@@ -39,6 +50,8 @@ C2_fcont_patch = C2_patch.FC(C, d, A, Q, C2_norm);
 window_fcont_patch_xi = window_patch_xi.FC(C, d, A, Q, xi_norm);
 window_fcont_patch_eta = window_patch_eta.FC(C, d, A, Q, eta_norm);
 S_fcont_patch = S_patch.FC(C, d, A, Q, nan);
+
+C2_fcont_patch.compute_xi_eta_fc_coeffs();
 
 fcont_patches = {C2_fcont_patch, window_fcont_patch_xi, window_fcont_patch_eta, S_fcont_patch};
 
@@ -55,9 +68,17 @@ R = R_cartesian_mesh_obj(R_x_bounds(1), R_x_bounds(2), R_y_bounds(1), R_y_bounds
 
 % Fills interior with exact values and interpolates patch values onto grid
 for patch = fcont_patches
-    R.interpolate_patch(patch{1}, d+3)
+    if isa(patch{1}, 'C2_patch_obj')      
+        R.interpolate_patch(patch{1}, d+3, true)
+    else
+        R.interpolate_patch(patch{1}, d+3, false)
+    end
 end
 R.fill_interior(f);
+
+figure;
+s = surf(R.R_X, R.R_Y, R.f_R);
+s.EdgeColor = 'none';
 
 %% FFT and Error Calculation
 R.compute_fc_coeffs()
