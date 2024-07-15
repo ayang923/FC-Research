@@ -21,7 +21,7 @@ classdef S_patch_obj < Q_patch_obj
             obj.h = h;
         end
         
-        function S_fcont_patch = FC(obj, C, d, A, Q, phi_normalization)
+        function S_fcont_patch = FC(obj, C, n_r, d, A, Q, phi_normalization)
             h_eta = (obj.eta_end-obj.eta_start)/obj.n_eta;
             
             [XI, ETA] = obj.xi_eta_mesh();
@@ -31,7 +31,7 @@ classdef S_patch_obj < Q_patch_obj
                 fcont = fcont_gram_blend_S(obj.f_XY, d, A, Q);
             end
             
-            S_fcont_patch = S_patch_obj(obj.M_p_general, obj.J_general, obj.n_xi, C+obj.n_eta, obj.xi_start, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_end, fcont, obj.h, obj.phi);
+            S_fcont_patch = S_patch_obj(obj.M_p_general, obj.J_general, obj.n_xi, C*n_r-1, obj.xi_start, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_start, fcont(1:C*n_r, :), obj.h, obj.phi);
         end
     end
 end

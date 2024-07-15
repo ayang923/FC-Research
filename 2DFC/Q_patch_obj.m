@@ -196,31 +196,29 @@ classdef Q_patch_obj < handle
                 interpol_eta_j_mesh = transpose(eta_j-half_d:eta_j+half_d);
             end
 
-            if ~biperiodic
-                interpol_xi_j_mesh = shift_idx_mesh(interpol_xi_j_mesh, 0, obj.n_xi);
-                interpol_eta_j_mesh = shift_idx_mesh(interpol_eta_j_mesh, 0, obj.n_eta);
-            end
+            interpol_xi_j_mesh = shift_idx_mesh(interpol_xi_j_mesh, 0, obj.n_xi);
+            interpol_eta_j_mesh = shift_idx_mesh(interpol_eta_j_mesh, 0, obj.n_eta);
             
             interpol_xi_mesh = h_xi*interpol_xi_j_mesh + obj.xi_start;
             interpol_eta_mesh = h_eta*interpol_eta_j_mesh + obj.eta_start;
             
-            if biperiodic
-                padded_f_XY = padarray(obj.f_XY, [d, d], 'both');
-            end
-            
             % first 1D interpolation
-            interpol_eta_exact = zeros(d+1, 1);
-            for vert_idx = 1:d+1
-                if biperiodic
-                    interpol_val = padded_f_XY(interpol_eta_j_mesh+d+1, interpol_xi_j_mesh(vert_idx)+d+1);
-                else
-                    interpol_val = obj.f_XY(interpol_eta_j_mesh+1, interpol_xi_j_mesh(vert_idx)+1);
+            if xi < 0
+                interpol_xi_exact = zeros(d+1, 1);
+                for horz_idx = 1:d+1
+                    interpol_val = obj.f_XY(interpol_eta_j_mesh(horz_idx)+1, interpol_xi_j_mesh+1)';
+                    interpol_xi_exact(horz_idx) = barylag([interpol_xi_mesh, interpol_val], xi);
                 end
-                interpol_eta_exact(vert_idx) = barylag([interpol_eta_mesh, interpol_val], eta);
+                f_xy = barylag([interpol_eta_mesh, interpol_xi_exact], eta);
+            else
+                interpol_eta_exact = zeros(d+1, 1);
+                for vert_idx = 1:d+1
+                    interpol_val = obj.f_XY(interpol_eta_j_mesh+1, interpol_xi_j_mesh(vert_idx)+1);
+                    interpol_eta_exact(vert_idx) = barylag([interpol_eta_mesh, interpol_val], eta);
+                end
+                % second 1D interpolation
+                f_xy = barylag([interpol_xi_mesh, interpol_eta_exact], xi);
             end
-            
-            % second 1D interpolation
-            f_xy = barylag([interpol_xi_mesh, interpol_eta_exact], xi);
         end
         
     end

@@ -84,6 +84,7 @@ classdef R_cartesian_mesh_obj < handle
                         if any(neighbor > [obj.n_y; obj.n_x]) || any(neighbor < [1; 1])
                             continue;
                         end
+                        
                         patch_idx = sub2ind([obj.n_y, obj.n_x], neighbor(2), neighbor(1));
                         
                         if isKey(P, patch_idx)
@@ -145,8 +146,8 @@ classdef R_cartesian_mesh_obj < handle
             f_R_patch = zeros(size(R_patch_idxs));
             for i = 1:length(R_patch_idxs)
                 xi_eta_point = P(R_patch_idxs(i));
-                [f_R_patch(i), in_range] = patch.locally_compute_FFT(xi_eta_point(1), xi_eta_point(2));
-%                 [f_R_patch(i), in_range] = patch.locally_compute(xi_eta_point(1), xi_eta_point(2), d, biperiodic);
+%                 [f_R_patch(i), in_range] = patch.locally_compute_FFT(xi_eta_point(1), xi_eta_point(2));
+                [f_R_patch(i), in_range] = patch.locally_compute(xi_eta_point(1), xi_eta_point(2), d, biperiodic);
                 if ~in_range
                     disp('huh')
                 end
