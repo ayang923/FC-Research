@@ -1,4 +1,4 @@
-classdef C2_patch_obj < Q_patch_obj
+classdef C2_patch_old_obj < Q_patch_obj
     %C2_PATCH_OBJ Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -6,13 +6,13 @@ classdef C2_patch_obj < Q_patch_obj
     end
     
     methods
-        function obj = C2_patch_obj(M_p, J, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi)
+        function obj = C2_patch_old_obj(M_p, J, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi)
             %C2_PATCH_OBJ Construct an instance of this class
             %   Detailed explanation goes here
             obj = obj@Q_patch_obj(M_p, J, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi);
         end
                 
-        function [C2_fcont_patch_xi, C2_fcont_patch_eta, C2_fcont_patch_corner] = FC(obj, C, n_r, d, A, Q, phi_normalization)
+        function C2_fcont_patch = FC(obj, C, d, A, Q, phi_normalization)
             h_xi = (obj.xi_end-obj.xi_start)/obj.n_xi;
             h_eta = (obj.eta_end-obj.eta_start)/obj.n_eta;
             
@@ -24,9 +24,7 @@ classdef C2_patch_obj < Q_patch_obj
                 fcont = fcont_gram_blend_C2(obj.f_XY, d, A, Q);
             end
             
-            C2_fcont_patch_xi =  C2_patch_obj(obj.M_p, obj.J, obj.n_xi, C*n_r, obj.xi_start, obj.xi_end, obj.eta_start-(C)*h_eta, obj.eta_start, fcont(1:C*n_r+1, C*n_r+1:end), obj.phi);
-            C2_fcont_patch_eta = C2_patch_obj(obj.M_p, obj.J, C*n_r, obj.n_eta, obj.xi_start-(C)*h_xi, obj.xi_start, obj.eta_start, obj.eta_end, fcont(C*n_r+1:end, 1:C*n_r+1), obj.phi);
-            C2_fcont_patch_corner = C2_patch_obj(obj.M_p, obj.J, C*n_r, C*n_r, obj.xi_start-(C)*h_xi, obj.xi_start, obj.eta_start-C*h_eta, obj.eta_start, fcont(1:C*n_r+1, 1:C*n_r+1), obj.phi);
+            C2_fcont_patch = C2_patch_obj(obj.M_p, obj.J, C+obj.n_xi, C+obj.n_eta, obj.xi_start-(C)*h_xi, obj.xi_end, obj.eta_start-(C)*h_eta, obj.eta_end, fcont, obj.phi);
         end
         
         function [C2_norm, xi_norm, eta_norm] = compute_phi_normalization(obj, window_patch_xi, window_patch_eta)
