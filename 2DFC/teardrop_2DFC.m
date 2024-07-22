@@ -4,15 +4,15 @@ clc; clear; close all;
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 l_theta = @(theta) [2*sin(theta/2), -sin(theta)];
 
-scale_factor = 2;
+scale_factor = 8;
 
 h_R = 0.01 / scale_factor;
 
-n_C2 = 50 * scale_factor;
-n_S_h = 50 * scale_factor;
-h_S = 0.01 / scale_factor;
+n_C2 = round(0.8/h_R);
+n_S_h = round(0.4/h_R);
+h_S = h_R;
 
-n_S_w = 600 * scale_factor;
+n_S_w = round((2*pi-1)/h_R);
 
 C = 27;
 d = 4;

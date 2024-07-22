@@ -56,7 +56,7 @@ classdef R_cartesian_mesh_obj < handle
             % constructs vector of idxs of points that are in both patch
             % and cartesian mesh
             [bound_X, bound_Y] = patch.boundary_mesh_xy();
-            in_patch = inpolygon(obj.R_X, obj.R_Y, bound_X, bound_Y) & ~obj.in_interior;
+            in_patch = inpolygon(obj.R_X, obj.R_Y, bound_X, bound_Y); %& ~obj.in_interior;
             R_patch_idxs = obj.R_idxs(in_patch);
                         
             % computing initial "proximity map" with floor and ceil

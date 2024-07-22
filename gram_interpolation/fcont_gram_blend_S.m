@@ -1,7 +1,7 @@
 % fcont_gram_blend_S : This routine computes the Fourier continuation in
 % parameter space for a S type patch, for a function over the unit square
 % domain. The function blends towards 0 upwards because the top row usually
-% corresponds with the axii.
+% corresponds with the x axis.
 %
 % Inputs: 
 %   fx : (real) values of the functions f over the unit square domain given
