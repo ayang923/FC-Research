@@ -1,16 +1,16 @@
-clc; clear; close all
+clc; clear; close all;
 % 2DFC on teardrop domain
 %% Setting Parameters
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 l_theta = @(theta) [2*sin(theta/2), -sin(theta)];
 
-scale_factor = 0;
+scale_factor = 2;
 
-h_R = 0.013 / scale_factor;
+h_R = 0.01 / scale_factor;
 
 n_C2 = 50 * scale_factor;
 n_S_h = 50 * scale_factor;
-h_S = 0.013 / scale_factor;
+h_S = 0.01 / scale_factor;
 
 n_S_w = 600 * scale_factor;
 
@@ -36,8 +36,8 @@ Q = double(Q);
 
 C2_patch = construct_C2_patch(f, 0.4, 2*pi-0.4, 0, n_C2, n_C2); % data associated with patch
 
-window_patch_xi = construct_S_patch(f, 0.1, 0.5, h_S, n_S_h, n_C2);
-window_patch_eta = construct_S_patch(f, 2*pi-0.1, 2*pi-0.5, h_S, n_S_h, n_C2);
+window_patch_xi = construct_S_patch(f, 0.1, 0.5, h_S, n_S_h, d+10);
+window_patch_eta = construct_S_patch(f, 2*pi-0.1, 2*pi-0.5, h_S, n_S_h, d+10);
 S_patch = construct_S_patch(f, 0.5, 2*pi-0.5, h_S, n_S_w, d+10);
 
 figure;
@@ -55,37 +55,37 @@ scatter(X(:), Y(:))
 [C2_norm, xi_norm, eta_norm] = C2_patch.compute_phi_normalization(window_patch_xi, window_patch_eta);
 
 %% FC in Parameter Space
-[C2_fcont_patch_xi, C2_fcont_patch_eta, C2_fcont_patch_corner] = C2_patch.FC(C, n_r, d, A, Q, nan);
+[C2_fcont_patch_xi, C2_fcont_patch_eta, C2_fcont_patch_corner] = C2_patch.FC(C, n_r, d, A, Q, C2_norm);
 window_fcont_patch_xi = window_patch_xi.FC(C, n_r, d, A, Q, xi_norm);
 window_fcont_patch_eta = window_patch_eta.FC(C, n_r, d, A, Q, eta_norm);
 S_fcont_patch = S_patch.FC(C, n_r, d, A, Q, nan);
 
-fcont_patches = {C2_fcont_patch, window_fcont_patch_xi, window_fcont_patch_eta, S_fcont_patch};
+fcont_patches = {C2_fcont_patch_xi, C2_fcont_patch_eta, C2_fcont_patch_corner, window_fcont_patch_xi, window_fcont_patch_eta, S_fcont_patch};
 
 %% Interpolation onto Cartesian Mesh
 % computes bounds of R
-R_x_bounds = [C2_fcont_patch.x_min, S_fcont_patch.x_max];
+R_x_bounds = [C2_fcont_patch_corner.x_min, S_fcont_patch.x_max];
 R_y_bounds = [S_fcont_patch.y_min, S_fcont_patch.y_max];
 
 % Computes boundary_XY values of domain 
-boundary_XY = l_theta(transpose(linspace(0, 2*pi, 100)));
+boundary_XY = l_theta(transpose(linspace(0, 2*pi, 200*scale_factor)));
 
 % Constructs cartesian mesh object
 R = R_cartesian_mesh_obj(R_x_bounds(1), R_x_bounds(2), R_y_bounds(1), R_y_bounds(2), h_R, boundary_XY(:, 1), boundary_XY(:, 2));
 
-% Fills interior with exact values and interpolates patch values onto grid
+
+%Fills interior with exact values and interpolates patch values onto grid
 for patch = fcont_patches
-    if isa(patch{1}, 'C2_patch_obj')      
-        R.interpolate_patch(patch{1}, d+3, true)
-    else
-        R.interpolate_patch(patch{1}, d+3, false)
-    end
+    R.interpolate_patch(patch{1}, d+3, false, f)
 end
 R.fill_interior(f);
 
 figure;
 s = surf(R.R_X, R.R_Y, R.f_R);
 s.EdgeColor = 'none';
+
+figure;
+scatter3(R.R_X(:), R.R_Y(:), R.f_R(:));
 
 %% FFT and Error Calculation
 R.compute_fc_coeffs()
@@ -130,7 +130,7 @@ function S_patch = construct_S_patch(f, theta_A, theta_B, h, n_xi, n_eta)
     l_A = @(xi) (theta_B - theta_A)*xi + theta_A;
     nu = @(xi) [cos(l_A(xi)), cos(l_A(xi)/2)] ./ sqrt(cos(l_A(xi)).^2 + cos(l_A(xi)/2).^2);
     
-    M_p_general = @(xi, eta, H) l_theta(l_A(xi)) + eta.*H.*nu(xi);
+    M_p_general = @(xi, eta, H) l_theta(l_A(xi)) + eta.*H.*nu(xi);%./nu_norm(xi);
     % H is a function of h and n_eta
     
     theta_diff = theta_B - theta_A;

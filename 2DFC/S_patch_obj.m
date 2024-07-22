@@ -31,7 +31,7 @@ classdef S_patch_obj < Q_patch_obj
                 fcont = fcont_gram_blend_S(obj.f_XY, d, A, Q);
             end
             
-            S_fcont_patch = S_patch_obj(obj.M_p_general, obj.J_general, obj.n_xi, C*n_r, obj.xi_start, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_start, fcont(1:C*n_r+1, :), obj.h./6, obj.phi);
+            S_fcont_patch = S_patch_obj(obj.M_p_general, obj.J_general, obj.n_xi, C*n_r, obj.xi_start, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_start, fcont(1:C*n_r+1, :), obj.h./n_r, obj.phi);
         end
     end
 end

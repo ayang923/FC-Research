@@ -52,23 +52,28 @@ classdef R_cartesian_mesh_obj < handle
             obj.f_R = zeros(obj.n_y, obj.n_x);
         end
         
-        function [P, R_patch_idxs] = interpolate_patch(obj, patch, d, biperiodic)
+        function interpolate_patch(obj, patch, d, biperiodic, f)
             % constructs vector of idxs of points that are in both patch
             % and cartesian mesh
             [bound_X, bound_Y] = patch.boundary_mesh_xy();
-            in_patch = inpolygon(obj.R_X, obj.R_Y, bound_X, bound_Y);% & ~obj.in_interior;
+            in_patch = inpolygon(obj.R_X, obj.R_Y, bound_X, bound_Y) & ~obj.in_interior;
             R_patch_idxs = obj.R_idxs(in_patch);
                         
             % computing initial "proximity map" with floor and ceil
             % operator
             [XI, ETA] = patch.xi_eta_mesh();
             [patch_X, patch_Y] = patch.convert_to_XY(XI, ETA);
+            
+            figure;
+            scatter(obj.R_X(R_patch_idxs), obj.R_Y(R_patch_idxs));
+            hold on;
+            scatter(patch_X(:), patch_Y(:))
 
             floor_X_j = floor((patch_X-obj.x_start)/obj.h);
             ceil_X_j = ceil((patch_X-obj.x_start)/obj.h);
             floor_Y_j = floor((patch_Y-obj.y_start)/obj.h);
             ceil_Y_j = ceil((patch_Y-obj.y_start)/obj.h);
-
+            
             P = containers.Map('KeyType', 'int32', 'ValueType', 'any');
             for i = 1:length(R_patch_idxs)
                 P(R_patch_idxs(i)) = nan;
@@ -142,14 +147,18 @@ classdef R_cartesian_mesh_obj < handle
                     end
                 end
             end
-            
+                        
             f_R_patch = zeros(size(R_patch_idxs));
             for i = 1:length(R_patch_idxs)
                 xi_eta_point = P(R_patch_idxs(i));
-%                 [f_R_patch(i), in_range] = patch.locally_compute_FFT(xi_eta_point(1), xi_eta_point(2));
-                [f_R_patch(i), in_range] = patch.locally_compute(xi_eta_point(1), xi_eta_point(2), d, biperiodic);
+                [interior_val, in_range] = patch.locally_compute(xi_eta_point(1), xi_eta_point(2), d, biperiodic);
                 if ~in_range
-                    disp('huh')
+                    warning('Problems with inpolygon')
+                    if all(xi_eta_point >= 0) && all(xi_eta_point <= 1)
+                        f_R_patch(i) = f(obj.R_X(R_patch_idxs(i)), obj.R_Y(R_patch_idxs(i)));
+                    end
+                else
+                    f_R_patch(i) = interior_val;
                 end
             end
             obj.f_R(R_patch_idxs) = obj.f_R(R_patch_idxs) + f_R_patch;
