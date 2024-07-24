@@ -82,9 +82,6 @@ classdef C2_patch_old_obj < Q_patch_obj
             scatter(window_xi_overlap_X(:), window_xi_overlap_Y(:));
             legend('C2', 'window', 'overlap')
             
-            figure;
-            
-            
             xi_norm = update_norm_arr(xi_norm, obj, window_xi_overlap_X, window_xi_overlap_Y, window_xi_overlap_XI_j, window_xi_overlap_ETA_j, nan);
             
             [eta_window_XI, eta_window_ETA] = window_patch_eta.xi_eta_mesh();

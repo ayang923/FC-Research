@@ -141,7 +141,7 @@ function [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_overlap_mesh(main_patc
         error("Invalid Quadrant Number")
     end
     XI_overlap = XI_j * h_xi + main_patch.xi_start;
-    ETA_overlap = ETA_j * h_xi + main_patch.eta_start;
+    ETA_overlap = ETA_j * h_eta + main_patch.eta_start;
 end
 
 function [norm_arr] = update_norm_arr(norm_arr, window_patch, overlap_X, overlap_Y, overlap_XI_j, overlap_ETA_j, initial_guesses)

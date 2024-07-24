@@ -16,7 +16,7 @@ n_S_w = round((2*pi-1)/h_R);
 
 C = 27;
 d = 4;
-n_r = 6;
+n_r = 8;
 
 %% Loading FC Data
 if(exist(['FC_data/A_d',num2str(d),'_C', num2str(C), '_r', num2str(n_r), '.mat']) == 0 | ...
