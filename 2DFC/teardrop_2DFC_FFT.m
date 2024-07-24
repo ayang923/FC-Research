@@ -29,15 +29,28 @@ end
 load(['FC_data/A_d',num2str(d),'_C', num2str(C), '_r', num2str(n_r), '.mat']);
 load(['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat']);
 
-A = double(A);
-Q = double(Q);
+A_refined = double(A);
+Q_refined = double(Q);
+
+if(exist(['FC_data/A_d',num2str(d),'_C', num2str(C), '.mat']) == 0 | ...
+   exist(['FC_data/Q_d',num2str(d),'_C', num2str(C), '.mat']) == 0)
+    disp('FC data not found. Generating FC operators... \n');
+    generate_bdry_continuations(d, C, C, 12, 20, 4, ...
+        256, 1);
+end
+
+load(['FC_data/A_d',num2str(d),'_C', num2str(C), '.mat']);
+load(['FC_data/Q_d',num2str(d),'_C', num2str(C), '.mat']);
+
+A_unrefined = double(A);
+Q_unrefined = double(Q);
 
 %% Constructing Boundary Patches
 
 C2_patch = construct_C2_patch(f, 0.4, 2*pi-0.4, 0, n_C2, n_C2); % data associated with patch
 
-window_patch_xi = construct_S_patch(f, 0.1, 0.5, h_S, n_S_h, d+10);
-window_patch_eta = construct_S_patch(f, 2*pi-0.1, 2*pi-0.5, h_S, n_S_h, d+10);
+window_patch_xi = construct_S_patch(f, 0.1, 0.5, h_S, n_S_h, 2*n_C2);
+window_patch_eta = construct_S_patch(f, 2*pi-0.1, 2*pi-0.5, h_S, n_S_h, 2*n_C2);
 S_patch = construct_S_patch(f, 0.5, 2*pi-0.5, h_S, n_S_w, d+10);
 
 figure;
@@ -55,16 +68,18 @@ scatter(X(:), Y(:))
 [C2_norm, xi_norm, eta_norm] = C2_patch.compute_phi_normalization(window_patch_xi, window_patch_eta);
 
 %% FC in Parameter Space
-[C2_fcont_patch_xi, C2_fcont_patch_eta, C2_fcont_patch_corner] = C2_patch.FC(C, n_r, d, A, Q, C2_norm);
-window_fcont_patch_xi = window_patch_xi.FC(C, n_r, d, A, Q, xi_norm);
-window_fcont_patch_eta = window_patch_eta.FC(C, n_r, d, A, Q, eta_norm);
-S_fcont_patch = S_patch.FC(C, n_r, d, A, Q, nan);
+[C2_fcont_patch] = C2_patch.FC(C, d, A_unrefined, Q_unrefined, C2_norm);
+window_fcont_patch_xi = window_patch_xi.FC(C, n_r, d, A_refined, Q_refined, xi_norm);
+window_fcont_patch_eta = window_patch_eta.FC(C, n_r, d, A_refined, Q_refined, eta_norm);
+S_fcont_patch = S_patch.FC(C, n_r, d, A_refined, Q_refined, nan);
 
-fcont_patches = {C2_fcont_patch_xi, C2_fcont_patch_eta, C2_fcont_patch_corner, window_fcont_patch_xi, window_fcont_patch_eta, S_fcont_patch};
+C2_fcont_patch.compute_xi_eta_fc_coeffs();
+
+fcont_patches = {C2_fcont_patch, window_fcont_patch_xi, window_fcont_patch_eta, S_fcont_patch};
 
 %% Interpolation onto Cartesian Mesh
 % computes bounds of R
-R_x_bounds = [C2_fcont_patch_corner.x_min, S_fcont_patch.x_max];
+R_x_bounds = [C2_fcont_patch.x_min, S_fcont_patch.x_max];
 R_y_bounds = [S_fcont_patch.y_min, S_fcont_patch.y_max];
 
 % Computes boundary_XY values of domain 
@@ -73,9 +88,19 @@ boundary_XY = l_theta(transpose(linspace(0, 2*pi, 200*scale_factor)));
 % Constructs cartesian mesh object
 R = R_cartesian_mesh_obj(R_x_bounds(1), R_x_bounds(2), R_y_bounds(1), R_y_bounds(2), h_R, boundary_XY(:, 1), boundary_XY(:, 2));
 
+figure;
+hold on;
 %Fills interior with exact values and interpolates patch values onto grid
 for patch = fcont_patches
-    R.interpolate_patch(patch{1}, d+3, false, f);
+    [X, Y] = patch{1}.xy_mesh;
+    scatter(X(:), Y(:));
+    
+    if isa(patch{1}, 'C2_patch_obj')
+        R.interpolate_patch(patch{1}, d+3, true, f);
+    else
+        R.interpolate_patch(patch{1}, d+3, false, f);
+    end
+    
 end
 R.fill_interior(f);
 
@@ -120,7 +145,7 @@ function C2_patch = construct_C2_patch(f, theta_A, theta_B, theta_C, n_xi, n_eta
     
     f_XY = reshape(f(XY(:, 1), XY(:, 2)), [n_eta+1, n_xi+1]);
     
-    C2_patch = C2_patch_obj(M_p, J, n_xi, n_eta, 0, 1, 0, 1, f_XY, nan); % data associated with patch
+    C2_patch = C2_patch_old_obj(M_p, J, n_xi, n_eta, 0, 1, 0, 1, f_XY, nan); % data associated with patch
 end
 
 function S_patch = construct_S_patch(f, theta_A, theta_B, h, n_xi, n_eta)

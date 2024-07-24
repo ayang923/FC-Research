@@ -73,6 +73,18 @@ classdef C2_patch_old_obj < Q_patch_obj
             [window_xi_overlap_XI, window_xi_overlap_ETA, window_xi_overlap_XI_j, window_xi_overlap_ETA_j] = compute_overlap_mesh(window_patch_xi, window_xi_corner, 3);
             [window_xi_overlap_X, window_xi_overlap_Y] = window_patch_xi.convert_to_XY(window_xi_overlap_XI, window_xi_overlap_ETA);
             
+            figure;
+            [X, Y] = obj.xy_mesh;
+            scatter(X(:), Y(:));
+            hold on;
+            [X, Y] = window_patch_xi.xy_mesh;
+            scatter(X(:), Y(:));
+            scatter(window_xi_overlap_X(:), window_xi_overlap_Y(:));
+            legend('C2', 'window', 'overlap')
+            
+            figure;
+            
+            
             xi_norm = update_norm_arr(xi_norm, obj, window_xi_overlap_X, window_xi_overlap_Y, window_xi_overlap_XI_j, window_xi_overlap_ETA_j, nan);
             
             [eta_window_XI, eta_window_ETA] = window_patch_eta.xi_eta_mesh();
@@ -139,7 +151,7 @@ function [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_overlap_mesh(main_patc
         error("Invalid Quadrant Number")
     end
     XI_overlap = XI_j * h_xi + main_patch.xi_start;
-    ETA_overlap = ETA_j * h_xi + main_patch.eta_start;
+    ETA_overlap = ETA_j * h_eta + main_patch.eta_start;
 end
 
 function [norm_arr] = update_norm_arr(norm_arr, window_patch, overlap_X, overlap_Y, overlap_XI_j, overlap_ETA_j, initial_guesses)

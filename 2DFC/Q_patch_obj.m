@@ -78,10 +78,10 @@ classdef Q_patch_obj < handle
         
         function [boundary_mesh_xi, boundary_mesh_eta] = boundary_mesh(obj)
             [h_xi, h_eta] = obj.h_mesh;
-            h_xi = 0;
-            h_eta = 0;
-            boundary_mesh_xi = [ones(obj.n_eta, 1)*(obj.xi_start-h_eta); obj.xi_mesh(); ones(obj.n_eta, 1)*(obj.xi_end+h_eta); flip(obj.xi_mesh())];
-            boundary_mesh_eta = [obj.eta_mesh(); ones(obj.n_xi, 1)*(obj.eta_end+h_xi); flip(obj.eta_mesh); ones(obj.n_xi, 1)*(obj.eta_start-h_xi)];
+%             h_xi = 0;
+%             h_eta = 0;
+            boundary_mesh_xi = [ones(obj.n_eta+1, 1)*(obj.xi_start-h_eta); obj.xi_mesh(); ones(obj.n_eta+1, 1)*(obj.xi_end+h_eta); flip(obj.xi_mesh()); obj.xi_start-h_eta];
+            boundary_mesh_eta = [obj.eta_mesh(); ones(obj.n_xi+1, 1)*(obj.eta_end+h_xi); flip(obj.eta_mesh); ones(obj.n_xi+1, 1)*(obj.eta_start-h_xi); obj.eta_start];
         end
         
         function [boundary_mesh_x, boundary_mesh_y] = boundary_mesh_xy(obj)
@@ -119,10 +119,10 @@ classdef Q_patch_obj < handle
         
         function compute_xi_eta_fc_coeffs(obj)
             obj.fc_coeffs = fftshift(fft2(obj.f_XY) / numel(obj.f_XY));
-            
+
             obj.freq_xi = -ceil((obj.n_xi)/2):floor(obj.n_xi/2);
             obj.freq_eta = -ceil((obj.n_eta)/2):floor(obj.n_eta/2);
-            
+
             [obj.N1, obj.N2] = meshgrid(obj.freq_xi, obj.freq_eta);
         end
         
@@ -171,7 +171,7 @@ classdef Q_patch_obj < handle
             [h_xi, h_eta] = obj.h_mesh();
             L_xi = obj.xi_end + h_xi - obj.xi_start;
             L_eta = obj.eta_end + h_eta - obj.eta_start;
-            
+
             f_xy = real(sum(obj.fc_coeffs .* exp(2*pi*1i*(obj.N1.*(xi-obj.xi_start)/L_xi+obj.N2*(eta-obj.eta_start)/L_eta)), 'all'));
         end
         
