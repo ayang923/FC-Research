@@ -56,7 +56,7 @@ classdef R_cartesian_mesh_obj < handle
             % constructs vector of idxs of points that are in both patch
             % and cartesian mesh
             [bound_X, bound_Y] = patch.boundary_mesh_xy();
-            in_patch = inpolygon(obj.R_X, obj.R_Y, bound_X, bound_Y); %& ~obj.in_interior;
+            in_patch = inpolygon(obj.R_X, obj.R_Y, bound_X, bound_Y) & ~obj.in_interior;
             R_patch_idxs = obj.R_idxs(in_patch);
                         
             % computing initial "proximity map" with floor and ceil
@@ -84,7 +84,6 @@ classdef R_cartesian_mesh_obj < handle
                         if any(neighbor > [obj.n_y; obj.n_x]) || any(neighbor < [1; 1])
                             continue;
                         end
-                        
                         patch_idx = sub2ind([obj.n_y, obj.n_x], neighbor(2), neighbor(1));
                         
                         if isKey(P, patch_idx)
@@ -152,6 +151,7 @@ classdef R_cartesian_mesh_obj < handle
                     [interior_val, in_range] = patch.locally_compute_FFT(xi_eta_point(1), xi_eta_point(2));
                 end
                 if ~in_range
+                    disp('huh')
                     if all(xi_eta_point >= 0) && all(xi_eta_point <= 1)
                         f_R_patch(i) = f(obj.R_X(R_patch_idxs(i)), obj.R_Y(R_patch_idxs(i)));
                     end
