@@ -62,8 +62,10 @@ classdef C1_patch_obj < handle
             B_c_unrefined_f_XY = obj.B_c.f_XY(:, 1:obj.n_bound-C+1);
             
             B_c_refined_xi_mesh = transpose((obj.B_c.xi_end - C*obj.h):(obj.h/n_r):obj.B_c.xi_end);
+            [XI_refined, ETA_refined] = meshgrid(B_c_refined_xi_mesh, obj.B_c.eta_mesh);
+            [X_refined, Y_refined] = obj.B_c.convert_to_XY(XI_refined, ETA_refined);
                                     
-            B_c_refined_f_XY = zeros(obj.B_c.n_eta+1, length(B_c_refined_xi_mesh));
+            B_c_refined_f_XY = zeros(size(XI_refined));
             half_M = floor((M+1)/2);
             for eta_j = 0:obj.n_bound
                 for xi_j = obj.n_bound-C:(obj.n_bound-1)
@@ -77,9 +79,9 @@ classdef C1_patch_obj < handle
                     interpol_xi_mesh = obj.h*interpol_xi_j_mesh + obj.B_c.xi_start;
                     interpol_val = obj.B_c.f_XY(eta_j+1, interpol_xi_j_mesh+1)';
                     
-                    xi_eval_j = ((xi_j-(obj.n_bound-C))*n_r):((xi_j-(obj.n_bound-C)+1)*n_r);
+                    xi_eval_j = 
                     
-                    B_c_refined_f_XY(eta_j+1, xi_eval_j+1) = barylag([interpol_xi_mesh, interpol_val], B_c_refined_xi_mesh(xi_eval_j+1));
+                    B_c_refined_f_XY(eta_j+1) = barylag([interpol_xi_mesh, interpol_val], B_c_refined_xi_mesh(((xi_j-(obj.n_bound-C))*n_r+1):((xi_j-(obj.n_bound-C)+1)*n_r))) - f()
                 end
             end
         end

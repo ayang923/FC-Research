@@ -204,23 +204,14 @@ classdef Q_patch_obj < handle
             interpol_eta_mesh = h_eta*interpol_eta_j_mesh + obj.eta_start;
             
             % first 1D interpolation
-%             if h_xi < h_eta
             interpol_xi_exact = zeros(d+1, 1);
             for horz_idx = 1:d+1
                 mu = [mean(interpol_xi_mesh), std(interpol_xi_mesh)];
                 interpol_val = obj.f_XY(interpol_eta_j_mesh(horz_idx)+1, interpol_xi_j_mesh+1)';
                 interpol_xi_exact(horz_idx) = barylag([(interpol_xi_mesh-mu(1))/mu(2), interpol_val], (xi-mu(1))/mu(2));
             end
+             % second 1D interpolation
             f_xy = barylag([interpol_eta_mesh, interpol_xi_exact], eta);
-%             else
-%             interpol_eta_exact = zeros(d+1, 1);
-%             for vert_idx = 1:d+1
-%                 interpol_val = obj.f_XY(interpol_eta_j_mesh+1, interpol_xi_j_mesh(vert_idx)+1);
-%                 interpol_eta_exact(vert_idx) = barylag([interpol_eta_mesh, interpol_val], eta);
-%             end
-%             % second 1D interpolation
-%             f_xy = barylag([interpol_xi_mesh, interpol_eta_exact], xi);
-%             end
         end
         
     end
