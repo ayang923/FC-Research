@@ -78,10 +78,10 @@ classdef Q_patch_obj < handle
         
         function [boundary_mesh_xi, boundary_mesh_eta] = boundary_mesh(obj)
             [h_xi, h_eta] = obj.h_mesh;
-            h_xi = 0;
-            h_eta = 0;
-            boundary_mesh_xi = [ones(obj.n_eta+1, 1)*(obj.xi_start-h_eta); obj.xi_mesh(); ones(obj.n_eta+1, 1)*(obj.xi_end+h_eta); flip(obj.xi_mesh()); obj.xi_start-h_eta];
-            boundary_mesh_eta = [obj.eta_mesh(); ones(obj.n_xi+1, 1)*(obj.eta_end+h_xi); flip(obj.eta_mesh); ones(obj.n_xi+1, 1)*(obj.eta_start-h_xi); obj.eta_start];
+%             h_xi = 0;
+%             h_eta = 0;
+            boundary_mesh_xi = [ones(obj.n_eta+1, 1)*(obj.xi_start-h_xi); obj.xi_mesh(); ones(obj.n_eta+1, 1)*(obj.xi_end+h_xi); flip(obj.xi_mesh()); obj.xi_start-h_xi];
+            boundary_mesh_eta = [obj.eta_mesh(); ones(obj.n_xi+1, 1)*(obj.eta_end+h_eta); flip(obj.eta_mesh); ones(obj.n_xi+1, 1)*(obj.eta_start-h_eta); obj.eta_start-h_eta];
         end
         
         function [boundary_mesh_x, boundary_mesh_y] = boundary_mesh_xy(obj)
@@ -109,7 +109,7 @@ classdef Q_patch_obj < handle
         end
         
         function [xi, eta] = round_boundary_points(obj, xi, eta)
-            eps = 1e-14;
+            eps = 1.5e-14;
             
             xi(abs(xi - obj.xi_start) < eps) = obj.xi_start;
             xi(abs(xi-obj.xi_end) < eps) = obj.xi_end;

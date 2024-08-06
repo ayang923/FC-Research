@@ -151,7 +151,6 @@ classdef R_cartesian_mesh_obj < handle
                     [interior_val, in_range] = patch.locally_compute_FFT(xi_eta_point(1), xi_eta_point(2));
                 end
                 if ~in_range
-                    disp('huh')
                     if all(xi_eta_point >= 0) && all(xi_eta_point <= 1)
                         f_R_patch(i) = f(obj.R_X(R_patch_idxs(i)), obj.R_Y(R_patch_idxs(i)));
                     end

@@ -50,12 +50,12 @@ classdef C2_patch_obj < Q_patch_obj
             window_xi_R_xi = window_xi_corner(1) - window_patch_xi.xi_start;
             window_xi_xi_0 = window_patch_xi.xi_start;
             
-            window_patch_xi.phi = @(xi, eta) obj.phi_1D((xi-window_xi_xi_0)/window_xi_R_xi);
+            window_patch_xi.phi = @(xi, eta) window_patch_xi.phi_1D((xi-window_xi_xi_0)/window_xi_R_xi);
             
             window_eta_R_xi = window_eta_corner(1) - window_patch_eta.xi_start;
             window_eta_xi_0 = window_patch_eta.xi_start;
             
-            window_patch_eta.phi = @(xi, eta) obj.phi_1D((xi-window_eta_xi_0)/window_eta_R_xi) ;
+            window_patch_eta.phi = @(xi, eta) window_patch_eta.phi_1D((xi-window_eta_xi_0)/window_eta_R_xi) ;
             
             [C2_XI, C2_ETA] = obj.xi_eta_mesh();
             C2_norm = obj.phi(C2_XI, C2_ETA);
