@@ -109,8 +109,8 @@ classdef Q_patch_obj < handle
         end
         
         function [xi, eta] = round_boundary_points(obj, xi, eta)
-            eps = 1.5e-14;
-            
+            eps = 1e-13;
+
             xi(abs(xi - obj.xi_start) < eps) = obj.xi_start;
             xi(abs(xi-obj.xi_end) < eps) = obj.xi_end;
             eta(abs(eta - obj.eta_start) < eps) = obj.eta_start;
@@ -144,7 +144,7 @@ classdef Q_patch_obj < handle
             end
 
             err_guess = @(x, y, v) transpose(obj.M_p(v(1), v(2))) - [x; y];
-            eps =  1e-14;
+            eps =  1e-13;
 
             for k = 1:size(initial_guesses, 2)
                 initial_guess = initial_guesses(:, k);

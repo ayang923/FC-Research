@@ -1,21 +1,7 @@
 clc; clear; close all;
 % 2DFC on boomerang domain
 %% Setting Parameters
-f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
-
-alpha = 1./2;
-beta = tan(alpha.*pi./2);
-l_theta = @(theta) [-2./3.*sin(3./2.*theta), beta.*sin(theta)];
-
-scale_factor = 1;
-
-h_R = 0.005 / scale_factor;
-
-n_C1_bound = round(0.2/(h_R));
-n_S_h = round(0.2/h_R);
-h_S = h_R;
-
-n_S_w = round((2*pi-0.5)/h_R);
+n_C1_bound = 40;
 
 C = 27;
 d = 4;
@@ -37,48 +23,34 @@ load(['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat']);
 A = double(A);
 Q = double(Q);
 
-%% Constructing Boundary Patches
-
-C1_patch = construct_C1_patch(f, 0.2, 2*pi-0.2, 0, -0.2, 2*pi+0.2, n_C1_bound); % data associated with patch
-
-window_patch_xi = construct_S_patch(f, 2*pi-0.05, 2*pi-0.25, h_S, n_S_h, d+5);
-window_patch_eta = construct_S_patch(f, 0.05, 0.25, h_S, n_S_h, d+5);
-S_patch = construct_S_patch(f, 0.25, 2*pi-0.25, h_S, n_S_w, d+5);
-
-figure;
-[X, Y] = S_patch.xy_mesh();
-scatter(X(:), Y(:))
-hold on;
-[X, Y] = C1_patch.B.xy_mesh();
-scatter(X(:), Y(:))
-[X, Y] = C1_patch.B_c.xy_mesh();
-scatter(X(:), Y(:))
-[X, Y] = window_patch_xi.xy_mesh();
-scatter(X(:), Y(:))
-[X, Y] = window_patch_eta.xy_mesh();
-scatter(X(:), Y(:))
+%% Loading Precomputed Patches and Interior Mesh
+load(['boomerang_data/boomerang_data_nC1bound', num2str(n_C1_bound)])
 
 %% Computing window functions for C1 Patch
 [C1_B_norm, C1_B_c_norm, xi_norm, eta_norm] = C1_patch.compute_phi_normalization(window_patch_xi, window_patch_eta);
 
 %% FC in Parameter Space
-[C1_fcont_patch_xi, C1_fcont_patch_eta_refined, C1_fcont_patch_eta_unrefined] = C1_patch.FC(C, n_r, d, A, Q, M, C1_B_norm, C2_B_c_norm);
+[C1_fcont_patch_xi, C1_fcont_patch_eta_refined, C1_fcont_patch_eta_unrefined] = C1_patch.FC(C, n_r, d, A, Q, M, C1_B_norm, C1_B_c_norm);
 window_fcont_patch_xi = window_patch_xi.FC(C, n_r, d, A, Q, xi_norm);
 window_fcont_patch_eta = window_patch_eta.FC(C, n_r, d, A, Q, eta_norm);
 S_fcont_patch = S_patch.FC(C, n_r, d, A, Q, nan);
 
 fcont_patches = {C1_fcont_patch_xi, C1_fcont_patch_eta_refined, C1_fcont_patch_eta_unrefined, window_fcont_patch_xi, window_fcont_patch_eta, S_fcont_patch};
-
+% fcont_patches = {C1_fcont_patch_xi, C1_fcont_patch_eta_refined, C1_fcont_patch_eta_unrefined};
 %% Interpolation onto Cartesian Mesh
 % computes bounds of R
-R_x_bounds = [C2_fcont_patch_corner.x_min, S_fcont_patch.x_max];
-R_y_bounds = [S_fcont_patch.y_min, S_fcont_patch.y_max];
+R_x_bounds = [S_fcont_patch.x_min-h_R, S_fcont_patch.x_max+h_R]
+R_y_bounds = [S_fcont_patch.y_min-h_R, S_fcont_patch.y_max+h_R]
 
-% Computes boundary_XY values of domain 
-boundary_XY = l_theta(transpose(linspace(0, 2*pi, 200*scale_factor)));
+% Constructs continued cartesian mesh object
+R_new = R.extend_R(R_x_bounds(1), R_x_bounds(2), R_y_bounds(1), R_y_bounds(2))
 
-% Constructs cartesian mesh object
-R = R_cartesian_mesh_obj(R_x_bounds(1), R_x_bounds(2), R_y_bounds(1), R_y_bounds(2), h_R, boundary_XY(:, 1), boundary_XY(:, 2));
+figure;
+s = surf(R_new.R_X, R_new.R_Y, R_new.f_R);
+s.EdgeColor = 'none';
+hold on;
+s = surf(R.R_X, R.R_Y, R.f_R);
+s.EdgeColor = 'none'
 
 %Fills interior with exact values and interpolates patch values onto grid
 for patch = fcont_patches

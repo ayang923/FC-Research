@@ -25,10 +25,11 @@ classdef R_cartesian_mesh_obj < handle
     end
     
     methods
-        function obj = R_cartesian_mesh_obj(x_start,x_end, y_start, y_end, h, boundary_X, boundary_Y)
+        function obj = R_cartesian_mesh_obj(x_start,x_end, y_start, y_end, h, boundary_X, boundary_Y, in_interior)
             %UNTITLED Construct an instance of this class
             %   Detailed explanation goes here
             obj.x_start = x_start;
+
             obj.x_end = ceil((x_end-x_start)/h)*h+x_start;
             obj.y_start = y_start;
             obj.y_end = ceil((y_end-y_start)/h)*h+y_start;
@@ -46,13 +47,40 @@ classdef R_cartesian_mesh_obj < handle
 
             obj.boundary_X = boundary_X;
             obj.boundary_Y = boundary_Y;
-            obj.in_interior = inpolygon(obj.R_X, obj.R_Y, boundary_X,  boundary_Y);
-            obj.interior_idxs = obj.R_idxs(obj.in_interior);
             
+            if ~isnan(in_interior)
+                if size(in_interior, 1) < obj.n_y || size(in_interior, 2) < obj.n_x
+                    in_interior = padarray(in_interior, [obj.n_y - size(in_interior, 1), obj.n_x - size(in_interior, 2)], 'post');
+                end
+                obj.in_interior = in_interior;
+            else
+                obj.in_interior = inpolygon(obj.R_X, obj.R_Y, boundary_X,  boundary_Y);
+            end
+            
+            obj.interior_idxs = obj.R_idxs(obj.in_interior);
             obj.f_R = zeros(obj.n_y, obj.n_x);
         end
         
-        function [P, R_patch_idxs] = interpolate_patch(obj, patch, d, biperiodic, f)
+        function R_new = extend_R(obj, x_start, x_end, y_start, y_end)
+            x_start_j = floor((x_start - obj.x_start)/obj.h);
+            x_end_j  = ceil((x_end-obj.x_start)/obj.h);
+            
+            y_start_j = floor((y_start - obj.y_start)/obj.h);
+            y_end_j = ceil((y_end-obj.y_start)/obj.h);
+            
+            matched_in_interior = logical([zeros(-y_start_j, x_end_j-x_start_j+1); zeros(obj.n_y, -x_start_j), obj.in_interior, zeros(obj.n_y, x_end_j-obj.n_x+1); zeros(y_end_j-obj.n_y+1, x_end_j-x_start_j+1)]);
+
+            matched_x_start =x_start_j*obj.h+obj.x_start;
+            matched_x_end = x_end_j*obj.h+obj.x_start;
+            
+            matched_y_start = y_start_j*obj.h+obj.y_start;
+            matched_y_end = y_end_j*obj.h+obj.y_start;
+                        
+            R_new = R_cartesian_mesh_obj(matched_x_start, matched_x_end, matched_y_start, matched_y_end, obj.h, obj.boundary_X, obj.boundary_Y, matched_in_interior);
+            R_new.f_R(-y_start_j+1:-y_start_j+obj.n_y, -x_start_j+1:-x_start_j+obj.n_x) = obj.f_R;
+        end
+        
+        function [P, R_patch_idxs] = interpolate_patch(obj, patch, d, biperiodic)
             % constructs vector of idxs of points that are in both patch
             % and cartesian mesh
             [bound_X, bound_Y] = patch.boundary_mesh_xy();
@@ -151,9 +179,9 @@ classdef R_cartesian_mesh_obj < handle
                     [interior_val, in_range] = patch.locally_compute_FFT(xi_eta_point(1), xi_eta_point(2));
                 end
                 if ~in_range
-                    if all(xi_eta_point >= 0) && all(xi_eta_point <= 1)
-                        f_R_patch(i) = f(obj.R_X(R_patch_idxs(i)), obj.R_Y(R_patch_idxs(i)));
-                    end
+%                     if all(xi_eta_point >= 0) && all(xi_eta_point <= 1)
+%                         f_R_patch(i) = f(obj.R_X(R_patch_idxs(i)), obj.R_Y(R_patch_idxs(i)));
+%                     end
                 else
                     f_R_patch(i) = interior_val;
                 end

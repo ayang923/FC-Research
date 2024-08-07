@@ -134,9 +134,6 @@ classdef C1_patch_obj < handle
             [xi_overlap_XI, xi_overlap_ETA, xi_overlap_XI_j, xi_overlap_ETA_j] = compute_overlap_mesh(obj.B, C1_xi_corner, 3);
             [xi_overlap_X, xi_overlap_Y] = obj.B.convert_to_XY(xi_overlap_XI, xi_overlap_ETA);
             
-            figure;
-            scatter(xi_overlap_XI, xi_overlap_ETA)
-            
             C1_B_norm = update_norm_arr(C1_B_norm, window_patch_xi, xi_overlap_X, xi_overlap_Y, xi_overlap_XI_j, xi_overlap_ETA_j, nan);
 
             [C1_B_c_XI, C1_B_c_ETA] = obj.B_c.xi_eta_mesh();

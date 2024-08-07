@@ -12,9 +12,10 @@ function [xn, converged] = newton_solve(f,J,x0,tau,Nmax)
 xn = x0;
 
 for i = 2:Nmax
+    xprev = xn;
     xn = xn - J(xn)\f(xn);
     
-    if max(abs(f(xn))) < tau
+    if max(abs(f(xn))) < tau && norm(xprev-xn) < tau
         break
     end
 end
