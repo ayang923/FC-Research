@@ -8,7 +8,7 @@ alpha = 1./2;
 beta = tan(alpha.*pi./2);
 l_theta = @(theta) [-2./3.*sin(3./2.*theta), beta.*sin(theta)];
 
-scale_factor = 1;
+scale_factor = 4;
 
 h_R = 0.005 / scale_factor;
 

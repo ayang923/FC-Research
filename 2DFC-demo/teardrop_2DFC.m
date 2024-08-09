@@ -9,8 +9,8 @@ scale_factor = 8;
 n_C2 = 40*scale_factor;
 
 C = 27;
-d = 4;
-n_r = 8;
+d = 7;
+n_r = 6;
 
 %% Loading FC Data
 if(exist(['FC_data/A_d',num2str(d),'_C', num2str(C), '_r', num2str(n_r), '.mat']) == 0 | ...

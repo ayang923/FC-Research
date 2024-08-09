@@ -54,6 +54,7 @@ clear 'R'
 for patch = fcont_patches
     R_FC.interpolate_patch(patch{1}, d+3);
 end
+
 %% Plots
 figure;
 s = surf(R_FC.R_X, R_FC.R_Y, R_FC.f_R);

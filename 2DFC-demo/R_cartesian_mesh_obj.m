@@ -96,7 +96,7 @@ classdef R_cartesian_mesh_obj < handle
         function [P, R_patch_idxs] = interpolate_patch(obj, patch, M)
             % constructs vector of idxs of points that are in both patch
             % and cartesian mesh
-            [bound_X, bound_Y] = patch.boundary_mesh_xy(true);
+            [bound_X, bound_Y] = patch.boundary_mesh_xy(false);
             in_patch = inpolygon_mesh(obj.R_X, obj.R_Y, bound_X, bound_Y) & ~obj.in_interior;
             R_patch_idxs = obj.R_idxs(in_patch);
 
@@ -116,13 +116,13 @@ classdef R_cartesian_mesh_obj < handle
             end
 
             disp("start first pass");
-
             for i = 1:size(patch_X, 1)
                 for j = 1:size(patch_X, 2)
                     neighbors = [floor_X_j(i, j), floor_X_j(i, j), ceil_X_j(i, j), ceil_X_j(i, j); floor_Y_j(i, j), ceil_Y_j(i, j), floor_Y_j(i, j), ceil_Y_j(i, j)];
+                    
                     for neighbor_i = 1:size(neighbors, 2)
                         neighbor = neighbors(:, neighbor_i) + 1;
-                        if any(neighbor > [obj.n_y; obj.n_x]) || any(neighbor < [1; 1])
+                        if any(neighbor > [obj.n_x; obj.n_y]) || any(neighbor < [1; 1])
                             continue;
                         end
                         patch_idx = sub2ind([obj.n_y, obj.n_x], neighbor(2), neighbor(1));
@@ -181,6 +181,7 @@ classdef R_cartesian_mesh_obj < handle
                         remove(nan_set, key{1});
                     end
                 end
+                length(keys(nan_set))
             end
                         
             f_R_patch = zeros(size(R_patch_idxs));
