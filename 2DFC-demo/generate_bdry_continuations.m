@@ -20,6 +20,11 @@ fprintf('Performing precomputations...\n');
 save(['FC_data/A_d',num2str(d),'_C', num2str(C), '_r', num2str(n_r), '.mat'], 'A');
 save(['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat'], 'Q');
 
+% Saving to Ascii
+A = double(A);
+Q = double(Q);
+save(['FC_data/A_d',num2str(d),'_C', num2str(C), '.txt'], "A", "-ascii");
+save(['FC_data/Q_d',num2str(d),'_C', num2str(C), '.txt'], "Q", "-ascii")
 
 % save(['FC_data/ArQr_d',num2str(d),'_C', num2str(C), '.mat'], 'ArQr');
 % save(['FC_data/AlQl_d',num2str(d),'_C', num2str(C), '.mat'], 'AlQl');
