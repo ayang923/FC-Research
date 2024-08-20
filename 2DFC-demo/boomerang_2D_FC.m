@@ -3,7 +3,7 @@ clc; clear; close all;
 %% Setting Parameters
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 
-n_C1_bound = 40;
+n_C1_bound = 320;
 
 C = 27;
 d = 4;
