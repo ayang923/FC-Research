@@ -3,10 +3,10 @@ clc; clear; close all;
 %% Setting Parameters
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 
-n_C1_bound = 320;
+n_C1_bound = 80;
 
 C = 27;
-d = 4;
+d = 5;
 n_r = 6;
 
 M = d+3;
@@ -39,7 +39,6 @@ window_fcont_patch_eta = window_patch_eta.FC(C, n_r, d, A, Q, eta_norm);
 S_fcont_patch = S_patch.FC(C, n_r, d, A, Q, nan);
 
 fcont_patches = {C1_fcont_patch_xi, C1_fcont_patch_eta_refined, C1_fcont_patch_eta_unrefined, window_fcont_patch_xi, window_fcont_patch_eta, S_fcont_patch};
-
 %% Interpolation onto Cartesian Mesh
 % computes bounds of R
 R_x_bounds = [S_fcont_patch.x_min-h_R, S_fcont_patch.x_max+h_R];
@@ -56,34 +55,34 @@ for patch = fcont_patches
 end
 
 %% Plots
-figure;
-s = surf(R_FC.R_X, R_FC.R_Y, R_FC.f_R);
-s.EdgeColor = 'none';
-
-figure;
-scatter(R_FC.R_X(:), R_FC.R_Y(:), 100, R_FC.f_R(:), 'filled');
-colorbar;
-colormap(jet);
-hold on;
-plot(R_FC.boundary_X, R_FC.boundary_Y)
-
-figure;
-scatter3(R_FC.R_X(:), R_FC.R_Y(:), R_FC.f_R(:));
+% figure;
+% s = surf(R_FC.R_X, R_FC.R_Y, R_FC.f_R);
+% s.EdgeColor = 'none';
+% 
+% figure;
+% scatter(R_FC.R_X(:), R_FC.R_Y(:), 100, R_FC.f_R(:), 'filled');
+% colorbar;
+% colormap(jet);
+% hold on;
+% plot(R_FC.boundary_X, R_FC.boundary_Y)
+% 
+% figure;
+% scatter3(R_FC.R_X(:), R_FC.R_Y(:), R_FC.f_R(:));
 
 %% FFT and Error Calculation
 R_FC.compute_fc_coeffs()
-[X_err, Y_err, f_err, ~] = R_FC.ifft_interpolation(R_FC.h * 0.5, false);
+[X_err, Y_err, f_err, interior_idxs] = R_FC.ifft_interpolation(R_FC.h * 0.5, true);
 
 % load finer interior data
-load(['boomerang_data/interior_mesh_nC1bound', num2str(n_C1_bound*2)])
-R_exact = R.extend_R(X_err(1, 1), X_err(1, end), Y_err(1, 1), Y_err(end, 1), false);
-clear 'R';
+% load(['boomerang_data/interior_mesh_nC1bound', num2str(n_C1_bound*2)])
+% R_exact = R.extend_R(X_err(1, 1), X_err(1, end), Y_err(1, 1), Y_err(end, 1), false);
+% clear 'R';
 
-err = abs(R_exact.f_R(R_exact.interior_idxs) - f_err(R_exact.interior_idxs));
+err = abs(f(X_err(interior_idxs), Y_err(interior_idxs)) - f_err(interior_idxs));
 max(err, [], 'all') %l_infinity error
 
 figure;
-scatter(X_err(R_exact.interior_idxs), Y_err(R_exact.interior_idxs), 100, err, 'filled');
+scatter(X_err(interior_idxs), Y_err(interior_idxs), 100, err, 'filled');
 
 % Add a color bar
 colorbar;
