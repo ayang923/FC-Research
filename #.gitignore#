@@ -1,0 +1,8 @@
+ntest_space/*
+FC\ repo/*
+.ipynb_checkpoints/*
+*~
+*.zip
+pdfs/*
+*.mat
+*.icloud

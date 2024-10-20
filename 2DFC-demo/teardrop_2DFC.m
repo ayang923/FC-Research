@@ -4,7 +4,7 @@ clc; clear; close all;
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 l_theta = @(theta) [2*sin(theta/2), -sin(theta)];
 
-scale_factor = 8;
+scale_factor = 2;
 
 n_C2 = 40*scale_factor;
 
