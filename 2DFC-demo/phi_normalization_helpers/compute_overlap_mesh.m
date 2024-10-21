@@ -4,16 +4,16 @@ function [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_overlap_mesh(main_patc
     
     if quadrant_overlap == 1
         j_corner_grid = [ceil(j_corner(1)); ceil(j_corner(2))];
-        [XI_j, ETA_j] = meshgrid(max([j_corner_grid(1); 0]):main_patch.n_xi, max([j_corner_grid(2); 0]):main_patch.n_eta);
+        [XI_j, ETA_j] = meshgrid(max([j_corner_grid(1); 0]):main_patch.n_xi-1, max([j_corner_grid(2); 0]):main_patch.n_eta-1);
     elseif quadrant_overlap == 2
         j_corner_grid = [floor(j_corner(1)); ceil(j_corner(2))];
-        [XI_j, ETA_j] = meshgrid(0:min([main_patch.n_xi; j_corner_grid(1)]), max([j_corner_grid(2); 0]):main_patch.n_eta);
+        [XI_j, ETA_j] = meshgrid(0:min([main_patch.n_xi-1; j_corner_grid(1)]), max([j_corner_grid(2); 0]):main_patch.n_eta-1);
     elseif quadrant_overlap == 3
         j_corner_grid = [floor(j_corner(1)); floor(j_corner(2))];
-        [XI_j, ETA_j] = meshgrid(0:min([main_patch.n_xi; j_corner_grid(1)]), 0:min([main_patch.n_eta; j_corner_grid(2)]));
+        [XI_j, ETA_j] = meshgrid(0:min([main_patch.n_xi-1; j_corner_grid(1)]), 0:min([main_patch.n_eta-1; j_corner_grid(2)]));
     elseif quadrant_overlap == 4
         j_corner_grid = [ceil(j_corner(1)); floor(j_corner(2))];
-        [XI_j, ETA_j] = meshgrid(max([j_corner_grid(1); 0]):main_patch.n_xi, 0:min([main_patch.n_eta; j_corner_grid(2)]));
+        [XI_j, ETA_j] = meshgrid(max([j_corner_grid(1); 0]):main_patch.n_xi-1, 0:min([main_patch.n_eta-1; j_corner_grid(2)]));
     else
         error("Invalid Quadrant Number")
     end

@@ -57,13 +57,13 @@ function C2_patch = construct_C2_patch(f, theta_A, theta_B, theta_C, n_xi, n_eta
     M_p = @(xi, eta) l_theta(l_A(xi)) + l_theta(l_B(eta)) - l_theta(theta_C);
     J = @(v) [theta_A*cos(v(1)*theta_A/2) (theta_B-2*pi)*cos((v(2)*(theta_B-2*pi)+2*pi)/2); -theta_A*cos(v(1)*theta_A) -(theta_B-2*pi)*cos(v(2)*(theta_B-2*pi)+2*pi)];
     
-    xi_mesh = linspace(0, 1, n_xi+1);
-    eta_mesh = linspace(0, 1, n_eta+1);
+    xi_mesh = linspace(0, 1, n_xi);
+    eta_mesh = linspace(0, 1, n_eta);
     
     [XI, ETA] = meshgrid(xi_mesh, eta_mesh);
     XY = M_p(XI(:), ETA(:));
     
-    f_XY = reshape(f(XY(:, 1), XY(:, 2)), [n_eta+1, n_xi+1]);
+    f_XY = reshape(f(XY(:, 1), XY(:, 2)), [n_eta, n_xi]);
     
     C2_patch = C2_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi, n_eta, 0, 1, 0, 1, f_XY, nan); % data associated with patch
 end
@@ -80,13 +80,13 @@ function S_patch = construct_S_patch(f, theta_A, theta_B, h, n_xi, n_eta, eps_xi
     theta_diff = theta_B - theta_A;
     J = @(v, H) [theta_diff*cos(l_A(v(1))/2)-v(2)*H*theta_diff*sin(l_A(v(1))), H*cos(l_A(v(1))); -1*theta_diff*cos(l_A(v(1)))-v(2)*H*theta_diff/2*sin(l_A(v(1))/2), H*cos(l_A(v(1))/2)];
     
-    xi_mesh = linspace(0, 1, n_xi+1);
-    eta_mesh = linspace(0, 1, n_eta+1);
+    xi_mesh = linspace(0, 1, n_xi);
+    eta_mesh = linspace(0, 1, n_eta);
     
     [XI, ETA] = meshgrid(xi_mesh, eta_mesh);
-    XY = M_p_general(XI(:), ETA(:), h*n_eta);
+    XY = M_p_general(XI(:), ETA(:), h*(n_eta-1));
     
-    f_XY = reshape(f(XY(:, 1), XY(:, 2)), [n_eta+1, n_xi+1]);
+    f_XY = reshape(f(XY(:, 1), XY(:, 2)), [n_eta, n_xi]);
     
     S_patch = S_patch_obj(M_p_general, J, eps_xi_eta, eps_xy, n_xi, n_eta, 0, 1, 0, 1, f_XY, h, nan);
 end

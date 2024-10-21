@@ -54,16 +54,16 @@ classdef Q_patch_obj < handle
         end
         
         function [h_xi, h_eta] = h_mesh(obj)
-            h_xi =(obj.xi_end-obj.xi_start)./obj.n_xi;
-            h_eta = (obj.eta_end-obj.eta_start) ./ obj.n_eta;
+            h_xi =(obj.xi_end-obj.xi_start)./ (obj.n_xi-1);
+            h_eta = (obj.eta_end-obj.eta_start) ./ (obj.n_eta-1);
         end
         
         function mesh = xi_mesh(obj)
-            mesh = transpose(linspace(obj.xi_start, obj.xi_end, obj.n_xi+1));
+            mesh = transpose(linspace(obj.xi_start, obj.xi_end, obj.n_xi));
         end
         
         function mesh = eta_mesh(obj)
-            mesh = transpose(linspace(obj.eta_start, obj.eta_end, obj.n_eta+1));
+            mesh = transpose(linspace(obj.eta_start, obj.eta_end, obj.n_eta));
         end
         
         function [XI, ETA] = xi_eta_mesh(obj)
@@ -117,6 +117,8 @@ classdef Q_patch_obj < handle
                 N = 20;
             
                 N_segment = ceil(N/4);
+                
+                % TODO: this is just a boundary mesh
                 xi_mesh = transpose(linspace(obj.xi_start, obj.xi_end, N_segment+1));
                 eta_mesh = transpose(linspace(obj.eta_start, obj.eta_end, N_segment+1));
 
@@ -163,8 +165,8 @@ classdef Q_patch_obj < handle
                 interpol_eta_j_mesh = transpose(eta_j-half_M+1:eta_j+half_M);
             end
 
-            interpol_xi_j_mesh = shift_idx_mesh(interpol_xi_j_mesh, 0, obj.n_xi);
-            interpol_eta_j_mesh = shift_idx_mesh(interpol_eta_j_mesh, 0, obj.n_eta);
+            interpol_xi_j_mesh = shift_idx_mesh(interpol_xi_j_mesh, 0, obj.n_xi-1);
+            interpol_eta_j_mesh = shift_idx_mesh(interpol_eta_j_mesh, 0, obj.n_eta-1);
             
             interpol_xi_mesh = h_xi*interpol_xi_j_mesh + obj.xi_start;
             interpol_eta_mesh = h_eta*interpol_eta_j_mesh + obj.eta_start;
