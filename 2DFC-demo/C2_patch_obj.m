@@ -1,15 +1,20 @@
-classdef C2_patch_obj < Q_patch_obj
+classdef C2_patch_obj < handle
     %C2_PATCH_OBJ Summary of this class goes here
     %   Detailed explanation goes here
     
     properties
+        L
+        W
     end
     
     methods
-        function obj = C2_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi)
+        function obj = C2_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi, n_eta, d, f_W, f_L, phi)
             %C2_PATCH_OBJ Construct an instance of this class
             %   Detailed explanation goes here
-            obj = obj@Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi);
+            h_xi = 1./(n_xi-1);
+            h_eta = 1./(n_eta-1);
+            obj.W = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi, d, 0, 1, 0, (d-1)*h_eta, f_W, phi);            
+            obj.L = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, d, n_eta-d+1, 0, (d-1)*h_xi, (d-1)*h_eta, 1, f_L, phi);
         end
                 
         function [C2_fcont_patch_xi, C2_fcont_patch_eta, C2_fcont_patch_corner] = FC(obj, C, n_r, d, A, Q, phi_normalization)
