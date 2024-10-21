@@ -22,9 +22,9 @@ classdef C2_patch_obj < Q_patch_obj
                 fcont = fcont_gram_blend_C2(obj.f_XY, d, A, Q);
             end
             
-            C2_fcont_patch_xi =  C2_patch_obj(obj.M_p, obj.J, obj.eps_xi_eta, obj.eps_xy, obj.n_xi, C*n_r+1, obj.xi_start, obj.xi_end, obj.eta_start-(C)*h_eta, obj.eta_start, fcont(1:C*n_r+1, C*n_r+1:end), obj.phi);
-            C2_fcont_patch_eta = C2_patch_obj(obj.M_p, obj.J, obj.eps_xi_eta, obj.eps_xy, C*n_r+1, obj.n_eta, obj.xi_start-(C)*h_xi, obj.xi_start, obj.eta_start, obj.eta_end, fcont(C*n_r+1:end, 1:C*n_r+1), obj.phi);
-            C2_fcont_patch_corner = C2_patch_obj(obj.M_p, obj.J, obj.eps_xi_eta, obj.eps_xy, C*n_r+1, C*n_r+1, obj.xi_start-(C)*h_xi, obj.xi_start, obj.eta_start-C*h_eta, obj.eta_start, fcont(1:C*n_r+1, 1:C*n_r+1), obj.phi);
+            C2_fcont_patch_xi =  Q_patch_obj(obj.M_p, obj.J, obj.eps_xi_eta, obj.eps_xy, obj.n_xi, C*n_r+1, obj.xi_start, obj.xi_end, obj.eta_start-(C)*h_eta, obj.eta_start, fcont(1:C*n_r+1, C*n_r+1:end), obj.phi);
+            C2_fcont_patch_eta = Q_patch_obj(obj.M_p, obj.J, obj.eps_xi_eta, obj.eps_xy, C*n_r+1, obj.n_eta, obj.xi_start-(C)*h_xi, obj.xi_start, obj.eta_start, obj.eta_end, fcont(C*n_r+1:end, 1:C*n_r+1), obj.phi);
+            C2_fcont_patch_corner = Q_patch_obj(obj.M_p, obj.J, obj.eps_xi_eta, obj.eps_xy, C*n_r+1, C*n_r+1, obj.xi_start-(C)*h_xi, obj.xi_start, obj.eta_start-C*h_eta, obj.eta_start, fcont(1:C*n_r+1, 1:C*n_r+1), obj.phi);
         end
         
         function [C2_norm, xi_norm, eta_norm] = compute_phi_normalization(obj, window_patch_xi, window_patch_eta)
