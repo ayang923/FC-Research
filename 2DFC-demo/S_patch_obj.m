@@ -1,8 +1,9 @@
-classdef S_patch_obj < Q_patch_obj
+classdef S_patch_obj < handle
     %S_PATCH_OBJ Summary of this class goes here
     %   Detailed explanation goes here
     
     properties
+        Q_patch
         M_p_general % function handle of M_p with H as a parameter
         J_general
         h
@@ -15,23 +16,24 @@ classdef S_patch_obj < Q_patch_obj
             h_eta = (eta_end-eta_start)/(n_eta-1);
             H = h / h_eta;
             
-            obj = obj@Q_patch_obj(@(xi, eta) M_p_general(xi, eta, H), @(v) J_general(v, H), eps_xi_eta, eps_xy, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi);
+            obj.Q_patch = Q_patch_obj(@(xi, eta) M_p_general(xi, eta, H), @(v) J_general(v, H), eps_xi_eta, eps_xy, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi);
+            
             obj.M_p_general = M_p_general;
             obj.J_general = J_general;
             obj.h = h;
         end
         
         function S_fcont_patch = FC(obj, C, n_r, d, A, Q, phi_normalization)
-            h_eta = (obj.eta_end-obj.eta_start)/(obj.n_eta-1);
+            h_eta = (obj.Q_patch.eta_end-obj.Q_patch.eta_start)/(obj.Q_patch.n_eta-1);
             
             [XI, ETA] = obj.xi_eta_mesh();
             if ~isnan(phi_normalization)
-                fcont = fcont_gram_blend_S(obj.f_XY.*obj.phi(XI, ETA)./phi_normalization, d, A, Q);
+                fcont = fcont_gram_blend_S(obj.Q_patch.f_XY.*obj.Q_patch.phi(XI, ETA)./phi_normalization, d, A, Q);
             else
-                fcont = fcont_gram_blend_S(obj.f_XY, d, A, Q);
+                fcont = fcont_gram_blend_S(obj.Q_patch.f_XY, d, A, Q);
             end
             
-            S_fcont_patch = Q_patch_obj(obj.M_p, obj.J, obj.eps_xi_eta, obj.eps_xy, obj.n_xi, C*n_r+1, obj.xi_start, obj.xi_end, obj.eta_start-C*h_eta, obj.eta_start, fcont(1:C*n_r+1, :), obj.phi);
+            S_fcont_patch = Q_patch_obj(obj.Q_patch.M_p, obj.Q_patch.J, obj.Q_patch.eps_xi_eta, obj.Q_patch.eps_xy, obj.Q_patch.n_xi, C*n_r+1, obj.Q_patch.xi_start, obj.Q_patch.xi_end, obj.Q_patch.eta_start-C*h_eta, obj.Q_patch.eta_start, fcont(1:C*n_r+1, :), obj.phi);
         end
     end
 end

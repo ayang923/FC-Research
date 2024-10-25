@@ -181,7 +181,6 @@ classdef Q_patch_obj < handle
              % second 1D interpolation
             f_xy = barylag([interpol_eta_mesh, interpol_xi_exact], eta);
         end
-        
     end
 end
 
