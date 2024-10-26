@@ -190,7 +190,7 @@ classdef Q_patch_obj < handle
             main_xi_0 = obj.xi_end;
             obj.phi = @(xi, eta) obj.phi_1D((xi-main_xi_0)/main_R_xi);
             
-            window_patch_phi = compute_window_phi(obj, window_patch, window_xi_corner);
+            window_patch_phi = compute_phi_normalization_window(obj, window_patch, window_xi_corner);
 
             [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_xi_overlap_mesh(obj, main_xi_corner, true);
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);    
@@ -208,7 +208,7 @@ classdef Q_patch_obj < handle
             main_xi_0 = obj.xi_start;
             obj.phi = @(xi, eta) obj.phi_1D((xi-main_xi_0)/main_R_xi);
             
-            window_patch_phi = compute_window_phi(obj, window_patch, window_xi_corner);
+            window_patch_phi = compute_phi_normalization_window(obj, window_patch, window_xi_corner);
 
             [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_xi_overlap_mesh(obj, main_xi_corner, false);
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);                
@@ -226,7 +226,7 @@ classdef Q_patch_obj < handle
             main_eta_0 = obj.eta_end;
             obj.phi = @(xi, eta) obj.phi_1D((eta-main_eta_0)/main_R_eta);
             
-            window_patch_phi = compute_window_phi(obj, window_patch, window_xi_corner);
+            window_patch_phi = compute_phi_normalization_window(obj, window_patch, window_xi_corner);
 
             [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(obj, main_eta_corner, true);
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);         
@@ -244,7 +244,7 @@ classdef Q_patch_obj < handle
             main_eta_0 = obj.eta_start;
             obj.phi = @(xi, eta) obj.phi_1D((eta-main_eta_0)/main_R_eta);
             
-            window_patch_phi = compute_window_phi(obj, window_patch, window_xi_corner);
+            window_patch_phi = compute_phi_normalization_window(obj, window_patch, window_xi_corner);
 
             [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(obj, main_eta_corner, true);
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);        
@@ -398,7 +398,7 @@ function [norm_arr] = update_norm_arr(norm_arr, window_patch, overlap_X, overlap
     end
 end
 
-function window_patch_phi = compute_window_phi(main_patch, window_patch, window_xi_corner)
+function window_patch_phi = compute_phi_normalization_window(main_patch, window_patch, window_xi_corner)
     window_R_xi = window_xi_corner - window_patch.xi_start;
     window_xi_0 = window_patch.xi_start;
     window_patch.phi = @(xi, eta) window_patch.phi_1D((xi-window_xi_0)/window_R_xi);
