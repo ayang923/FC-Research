@@ -4,7 +4,7 @@ clc; clear; close all;
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 l_theta = @(theta) [2*sin(theta/2), -sin(theta)];
 
-scale_factor = 2;
+scale_factor = 4;
 
 n_C2 = 40*scale_factor;
 
@@ -31,10 +31,10 @@ load(['teardrop_data/patches_nC2', num2str(n_C2), '_d', num2str(d)])
 load(['teardrop_data/interior_mesh_nC2', num2str(n_C2)])
 
 %% Computing window functions for C2 Patch
-[C2_norm, xi_norm, eta_norm] = C2_patch.compute_phi_normalization(window_patch_xi, window_patch_eta);
+[C2_W_norm, C2_L_norm, xi_norm, eta_norm] = C2_patch.compute_phi_normalization(window_patch_xi, window_patch_eta);
 
 %% FC in Parameter Space
-[C2_fcont_patch_xi, C2_fcont_patch_eta, C2_fcont_patch_corner] = C2_patch.FC(C, n_r, d, A, Q, C2_norm);
+[C2_fcont_patch_xi, C2_fcont_patch_eta, C2_fcont_patch_corner] = C2_patch.FC(C, n_r, d, A, Q, C2_W_norm, C2_L_norm);
 window_fcont_patch_xi = window_patch_xi.FC(C, n_r, d, A, Q, xi_norm);
 window_fcont_patch_eta = window_patch_eta.FC(C, n_r, d, A, Q, eta_norm);
 S_fcont_patch = S_patch.FC(C, n_r, d, A, Q, nan);

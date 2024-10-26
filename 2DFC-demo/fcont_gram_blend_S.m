@@ -24,6 +24,6 @@ fl = fx(1:d, :);
 fc = flipud(A * (Q .' * flipud(fl)));
 fc = double(fc);
 
-fcont = [fc; fx];
+fcont = [fc; fx(1, :)];
 end
 
