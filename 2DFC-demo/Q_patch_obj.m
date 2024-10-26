@@ -181,6 +181,236 @@ classdef Q_patch_obj < handle
              % second 1D interpolation
             f_xy = barylag([interpol_eta_mesh, interpol_xi_exact], eta);
         end
+        
+        function [main_patch_phi, window_patch_phi] = compute_phi_normalization_xi_right(obj, window_patch)
+            main_xi_corner = compute_xi_corner(obj, window_patch, true, window_patch.xi_start, true);
+            window_xi_corner = compute_xi_corner(window_patch, obj, true, obj.xi_end, false);
+
+            main_R_xi = main_xi_corner - obj.xi_end;
+            main_xi_0 = obj.xi_end;
+            obj.phi = @(xi, eta) obj.phi_1D((xi-main_xi_0)/main_R_xi);
+            
+            window_patch_phi = compute_window_phi(obj, window_patch, window_xi_corner);
+
+            [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_xi_overlap_mesh(obj, main_xi_corner, true);
+            [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);    
+            
+            [main_XI, main_ETA] = obj.xi_eta_mesh;
+            main_patch_phi = obj.phi(main_XI, main_ETA);
+            main_patch_phi = update_norm_arr(main_patch_phi, window_patch, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+        end
+        
+        function [main_patch_phi, window_patch_phi] = compute_phi_normalization_xi_left(obj, window_patch)
+            main_xi_corner = compute_xi_corner(obj, window_patch, true, window_patch.xi_end, false);
+            window_xi_corner = compute_xi_corner(window_patch, obj, true, obj.xi_start, true);
+
+            main_R_xi = main_xi_corner - obj.xi_start;
+            main_xi_0 = obj.xi_start;
+            obj.phi = @(xi, eta) obj.phi_1D((xi-main_xi_0)/main_R_xi);
+            
+            window_patch_phi = compute_window_phi(obj, window_patch, window_xi_corner);
+
+            [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_xi_overlap_mesh(obj, main_xi_corner, false);
+            [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);                
+            
+            [main_XI, main_ETA] = obj.xi_eta_mesh;
+            main_patch_phi = obj.phi(main_XI, main_ETA);
+            main_patch_phi = update_norm_arr(main_patch_phi, window_patch, X_overlap, Y_overlap, XI_j, ETA_j, nan);        
+        end
+    
+        function [main_patch_phi, window_patch_phi] = compute_phi_normalization_eta_up(obj, window_patch)
+            main_eta_corner = compute_eta_corner(obj, window_patch, true, window_patch.xi_start, true);
+            window_xi_corner = compute_xi_corner(window_patch, obj, false, obj.eta_end, false);
+
+            main_R_eta = main_eta_corner - obj.eta_end;
+            main_eta_0 = obj.eta_end;
+            obj.phi = @(xi, eta) obj.phi_1D((eta-main_eta_0)/main_R_eta);
+            
+            window_patch_phi = compute_window_phi(obj, window_patch, window_xi_corner);
+
+            [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(obj, main_eta_corner, true);
+            [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);         
+            
+            [main_XI, main_ETA] = obj.xi_eta_mesh;
+            main_patch_phi = obj.phi(main_XI, main_ETA);
+            main_patch_phi = update_norm_arr(main_patch_phi, window_patch, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+        end
+        
+        function [main_patch_phi, window_patch_phi] = compute_phi_normalization_eta_down(obj, window_patch)
+            main_eta_corner = compute_eta_corner(obj, window_patch, true, window_patch.xi_end, false);
+            window_xi_corner = compute_xi_corner(window_patch, obj, false, obj.eta_end, false);
+
+            main_R_eta = main_eta_corner - obj.eta_start;
+            main_eta_0 = obj.eta_start;
+            obj.phi = @(xi, eta) obj.phi_1D((eta-main_eta_0)/main_R_eta);
+            
+            window_patch_phi = compute_window_phi(obj, window_patch, window_xi_corner);
+
+            [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(obj, main_eta_corner, true);
+            [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);        
+            
+            [main_XI, main_ETA] = obj.xi_eta_mesh;
+            main_patch_phi = obj.phi(main_XI, main_ETA);
+            main_patch_phi = update_norm_arr(main_patch_phi, window_patch, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+        end
     end
 end
+
+function [main_xi_corner] = compute_xi_corner(main_patch, window_patch, window_fix_xi, window_fixed_edge, window_patch_right)
+%COMPUTE_XI_CORNER Summary of this function goes here
+%   Detailed explanation goes here
+        [h_xi_window, h_eta_window] = window_patch.h_mesh;
+        
+        if window_fix_xi
+            window_xi_edge = window_fixed_edge;
+            window_eta_edge = window_patch.eta_start;
+        else
+            window_xi_edge = window_patch.xi_start;
+            window_eta_edge = window_fixed_edge;
+        end
+                
+        if window_patch_right
+            main_xi_corner = main_patch.xi_end;
+        else
+            main_xi_corner = main_patch.xi_start;
+        end
+
+        while true
+            window_xy_edge = window_patch.M_p(window_xi_edge, window_eta_edge);
+            [main_xi_edge, main_eta_edge, converged] = main_patch.inverse_M_p(window_xy_edge(1, 1), window_xy_edge(1, 2), nan);
+            if ~converged
+                 warning("Nonconvergence in computing boundary mesh values");
+                 break;
+            end
+            if main_eta_edge > main_patch.eta_end || main_eta_edge < main_patch.eta_start
+                break;
+            end
+            if (main_xi_edge < main_xi_corner && window_patch_right) || (main_xi_edge > main_xi_corner && ~window_patch_right)
+                main_xi_corner = main_xi_edge;
+            end
+            if window_fix_xi
+                window_eta_edge = window_eta_edge + h_eta_window;
+            else
+                window_xi_edge = window_xi_edge + h_xi_window;
+            end
+        end
+end
+
+function [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_xi_overlap_mesh(main_patch, xi_corner, window_patch_right)
+%COMPUTE_XI_OVERLAP_MESH Summary of this function goes here
+%   Detailed explanation goes here
+    [h_xi, h_eta] = main_patch.h_mesh;
+    
+    if window_patch_right
+        xi_corner_j = ceil((xi_corner - main_patch.xi_start) / h_xi);
+        [XI_j, ETA_j] = meshgrid(xi_corner_j:(main_patch.n_xi-1), 0:(main_patch.n_eta-1));        
+    else
+        xi_corner_j = floor((xi_corner - main_patch.xi_start) / h_xi);
+        [XI_j, ETA_j] = meshgrid(0:xi_corner_j, 0:(main_patch.n_eta-1));
+    end
+    
+    XI_overlap = XI_j * h_xi + main_patch.xi_start;
+    ETA_overlap = ETA_j * h_eta + main_patch.eta_start;
+end
+
+function [main_eta_corner] = compute_eta_corner(main_patch, window_patch, window_fix_xi, window_fixed_edge, window_patch_up)
+%COMPUTE_XI_CORNER Summary of this function goes here
+%   Detailed explanation goes here
+        [h_xi_window, h_eta_window] = window_patch.h_mesh;
+        
+        if window_fix_xi
+            window_xi_edge = window_fixed_edge;
+            window_eta_edge = window_patch.eta_start;
+        else
+            window_xi_edge = window_patch.xi_start;
+            window_eta_edge = window_fixed_edge;
+        end
+                
+        if window_patch_up
+            main_eta_corner = main_patch.eta_end;
+        else
+            main_eta_corner = main_patch.eta_start;
+        end
+
+        while true
+            window_xy_edge = window_patch.M_p(window_xi_edge, window_eta_edge);
+            [main_xi_edge, main_eta_edge, converged] = main_patch.inverse_M_p(window_xy_edge(1, 1), window_xy_edge(1, 2), nan);
+            if ~converged
+                 warning("Nonconvergence in computing boundary mesh values");
+                 break;
+            end
+            if main_xi_edge > main_patch.xi_end || main_xi_edge < main_patch.xi_start
+                break;
+            end
+            if (main_eta_edge < main_eta_corner && window_patch_up) || (main_eta_edge > main_eta_corner && ~window_patch_up)
+                main_eta_corner = main_eta_edge;
+            end
+            if window_fix_xi
+                window_eta_edge = window_eta_edge + h_eta_window;
+            else
+                window_xi_edge = window_xi_edge + h_xi_window;
+            end
+        end
+end
+
+
+
+function [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(main_patch, eta_corner, window_patch_up)
+%COMPUTE_XI_OVERLAP_MESH Summary of this function goes here
+%   Detailed explanation goes here
+    [h_xi, h_eta] = main_patch.h_mesh;
+    
+    if window_patch_up
+        eta_corner_j = ceil((eta_corner - main_patch.eta_start) / h_eta);
+        [XI_j, ETA_j] = meshgrid(0:(main_patch.n_xi-1), eta_corner_j:(main_patch.n_eta-1));        
+    else
+        eta_corner_j = floor((eta_corner - main_patch.eta_start) / h_eta);
+        [XI_j, ETA_j] = meshgrid(0:(main_patch.n_xi-1), 0:eta_corner_j);
+    end
+    
+    XI_overlap = XI_j * h_xi + main_patch.xi_start;
+    ETA_overlap = ETA_j * h_eta + main_patch.eta_start;
+end
+
+function [norm_arr] = update_norm_arr(norm_arr, window_patch, overlap_X, overlap_Y, overlap_XI_j, overlap_ETA_j, initial_guesses)
+    for i = 1:size(overlap_X, 1)
+        if mod(i, 2) == 1
+            j_lst = 1:size(overlap_X, 2);
+        else
+            j_lst = size(overlap_X, 2):-1:1;
+        end
+        
+        for j = j_lst
+            [window_patch_xi, window_patch_eta, converged] = window_patch.inverse_M_p(overlap_X(i, j), overlap_Y(i, j), initial_guesses);
+            
+            if converged
+                xi_i = overlap_XI_j(i, j) + 1;
+                xi_j = overlap_ETA_j(i, j) + 1;
+                norm_arr(xi_j, xi_i) = norm_arr(xi_j, xi_i) + window_patch.phi(window_patch_xi, window_patch_eta);
+            elseif ~converged
+                warning("Nonconvergence in computing C2_norm")
+            end
+            
+            if converged
+                initial_guesses = [window_patch_xi; window_patch_eta]; % using previous point as next initial guess
+            end
+        end
+    end
+end
+
+function window_patch_phi = compute_window_phi(main_patch, window_patch, window_xi_corner)
+    window_R_xi = window_xi_corner - window_patch.xi_start;
+    window_xi_0 = window_patch.xi_start;
+    window_patch.phi = @(xi, eta) window_patch.phi_1D((xi-window_xi_0)/window_R_xi);
+
+    [XI_overlap_window, ETA_overlap_window, XI_j_window, ETA_j_window] = compute_xi_overlap_mesh(window_patch, window_xi_corner, false);
+    [X_overlap_window, Y_overlap_window] = window_patch.convert_to_XY(XI_overlap_window, ETA_overlap_window);
+    
+    [window_XI, window_ETA] = window_patch.xi_eta_mesh;
+    window_patch_phi = window_patch.phi(window_XI, window_ETA);
+    window_patch_phi = update_norm_arr(window_patch_phi, main_patch, X_overlap_window, Y_overlap_window, XI_j_window, ETA_j_window, nan);
+end
+
+
+
 
