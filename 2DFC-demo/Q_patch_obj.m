@@ -52,7 +52,7 @@ classdef Q_patch_obj < handle
             obj.phi_1D = @(x) erfc(6*(-2*x+1))/2;
             obj.phi = phi; %phi not defined until overlaps are given
         end
-        
+
         function [h_xi, h_eta] = h_mesh(obj)
             h_xi =(obj.xi_end-obj.xi_start)./ (obj.n_xi-1);
             h_eta = (obj.eta_end-obj.eta_start) ./ (obj.n_eta-1);
@@ -201,8 +201,8 @@ classdef Q_patch_obj < handle
         end
         
         function [main_patch_phi, window_patch_phi] = compute_phi_normalization_xi_left(obj, window_patch)
-            main_xi_corner = compute_xi_corner(obj, window_patch, true, window_patch.xi_end, false);
-            window_xi_corner = compute_xi_corner(window_patch, obj, true, obj.xi_start, true);
+            main_xi_corner = compute_xi_corner(obj, window_patch, true, window_patch.xi_start, false);
+            window_xi_corner = compute_xi_corner(window_patch, obj, true, obj.xi_start, false);
 
             main_R_xi = main_xi_corner - obj.xi_start;
             main_xi_0 = obj.xi_start;
@@ -237,8 +237,8 @@ classdef Q_patch_obj < handle
         end
         
         function [main_patch_phi, window_patch_phi] = compute_phi_normalization_eta_down(obj, window_patch)
-            main_eta_corner = compute_eta_corner(obj, window_patch, true, window_patch.xi_end, false);
-            window_xi_corner = compute_xi_corner(window_patch, obj, false, obj.eta_end, false);
+            main_eta_corner = compute_eta_corner(obj, window_patch, true, window_patch.xi_start, false);
+            window_xi_corner = compute_xi_corner(window_patch, obj, false, obj.eta_start, false);
 
             main_R_eta = main_eta_corner - obj.eta_start;
             main_eta_0 = obj.eta_start;
