@@ -21,7 +21,7 @@ n_S_w = round((2*pi-0.5)/h_R);
 eps_xi_eta = 1e-13;
 eps_xy = 1e-13;
 
-d = 4;
+d = 7;
 
 %% Constructing Boundary Patches
 C1_patch = construct_C1_patch(f, 0.2, 2*pi-0.2, 0, -0.2, 2*pi+0.2, n_C1_bound, eps_xi_eta, eps_xy); % data associated with patch

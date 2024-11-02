@@ -246,7 +246,7 @@ classdef Q_patch_obj < handle
             
             window_patch_phi = compute_phi_normalization_window(obj, window_patch, window_xi_corner);
 
-            [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(obj, main_eta_corner, true);
+            [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(obj, main_eta_corner, false);
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);        
             
             [main_XI, main_ETA] = obj.xi_eta_mesh;
