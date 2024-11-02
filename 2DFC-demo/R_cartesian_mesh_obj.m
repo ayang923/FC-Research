@@ -181,7 +181,6 @@ classdef R_cartesian_mesh_obj < handle
                         remove(nan_set, key{1});
                     end
                 end
-                length(keys(nan_set))
             end
                         
             f_R_patch = zeros(size(R_patch_idxs));

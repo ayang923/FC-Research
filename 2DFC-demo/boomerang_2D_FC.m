@@ -3,10 +3,10 @@ clc; clear; close all;
 %% Setting Parameters
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 
-n_C1_bound = 80;
+n_C1_bound = 321;
 
 C = 27;
-d = 5;
+d = 7;
 n_r = 6;
 
 M = d+3;
@@ -30,15 +30,16 @@ load(['boomerang_data/patches_nC1bound', num2str(n_C1_bound), '_d', num2str(d)])
 load(['boomerang_data/interior_mesh_nC1bound', num2str(n_C1_bound)])
 
 %% Computing window functions for C1 Patch
-[C1_B_norm, C1_B_c_norm, xi_norm, eta_norm] = C1_patch.compute_phi_normalization(window_patch_xi, window_patch_eta);
+[C1_L_norm, C1_W_norm, xi_norm, eta_norm] = C1_patch.compute_phi_normalization(window_patch_xi, window_patch_eta);
 
 %% FC in Parameter Space
-[C1_fcont_patch_xi, C1_fcont_patch_eta_refined, C1_fcont_patch_eta_unrefined] = C1_patch.FC(C, n_r, d, A, Q, M, C1_B_norm, C1_B_c_norm);
+[C1_fcont_patch_L, C1_fcont_patch_W_refined, C1_fcont_patch_W_unrefined] = C1_patch.FC(C, n_r, d, A, Q, M, C1_L_norm, C1_W_norm);
 window_fcont_patch_xi = window_patch_xi.FC(C, n_r, d, A, Q, xi_norm);
 window_fcont_patch_eta = window_patch_eta.FC(C, n_r, d, A, Q, eta_norm);
 S_fcont_patch = S_patch.FC(C, n_r, d, A, Q, nan);
 
-fcont_patches = {C1_fcont_patch_xi, C1_fcont_patch_eta_refined, C1_fcont_patch_eta_unrefined, window_fcont_patch_xi, window_fcont_patch_eta, S_fcont_patch};
+fcont_patches = {C1_fcont_patch_L, C1_fcont_patch_W_refined, C1_fcont_patch_W_unrefined, window_fcont_patch_xi, window_fcont_patch_eta, S_fcont_patch};
+
 %% Interpolation onto Cartesian Mesh
 % computes bounds of R
 R_x_bounds = [S_fcont_patch.x_min-h_R, S_fcont_patch.x_max+h_R];

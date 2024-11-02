@@ -8,11 +8,11 @@ alpha = 1./2;
 beta = tan(alpha.*pi./2);
 l_theta = @(theta) [-2./3.*sin(3./2.*theta), beta.*sin(theta)];
 
-scale_factor = 4;
+scale_factor = 8;
 
 h_R = 0.005 / scale_factor;
 
-n_C1_bound = round(0.2/(h_R));
+n_C1 = round(0.2/(h_R))+1;
 n_S_h = round(0.2/h_R);
 h_S = h_R;
 
@@ -24,17 +24,17 @@ eps_xy = 1e-13;
 d = 7;
 
 %% Constructing Boundary Patches
-C1_patch = construct_C1_patch(f, 0.2, 2*pi-0.2, 0, -0.2, 2*pi+0.2, n_C1_bound, eps_xi_eta, eps_xy); % data associated with patch
+C1_patch = construct_C1_patch(f, 0.2, 2*pi-0.2, 0, -0.2, 2*pi+0.2, n_C1, n_C1, d, eps_xi_eta, eps_xy); % data associated with patch
 
-window_patch_xi = construct_S_patch(f, 2*pi-0.05, 2*pi-0.25, h_S, n_S_h, d+5, eps_xi_eta, eps_xy);
-window_patch_eta = construct_S_patch(f, 0.05, 0.25, h_S, n_S_h, d+5, eps_xi_eta, eps_xy);
+window_patch_eta = construct_S_patch(f, 2*pi-0.05, 2*pi-0.25, h_S, n_S_h, d+5, eps_xi_eta, eps_xy);
+window_patch_xi = construct_S_patch(f, 0.05, 0.25, h_S, n_S_h, d+5, eps_xi_eta, eps_xy);
 S_patch = construct_S_patch(f, 0.25, 2*pi-0.25, h_S, n_S_w, d+5, eps_xi_eta, eps_xy);
 
-save(['boomerang_data/patches_nC1bound', num2str(n_C1_bound), '_d', num2str(d)], 'C1_patch', 'window_patch_xi', 'window_patch_eta', 'S_patch')
+save(['boomerang_data/patches_nC1bound', num2str(n_C1), '_d', num2str(d)], 'C1_patch', 'window_patch_xi', 'window_patch_eta', 'S_patch')
 
 %% Computing Points of Interior Cartesian Mesh
-R_x_bounds = [S_patch.x_min-h_R, S_patch.x_max+h_R];
-R_y_bounds = [S_patch.y_min-h_R, S_patch.y_max+h_R];
+R_x_bounds = [S_patch.Q_patch.x_min-h_R, S_patch.Q_patch.x_max+h_R];
+R_y_bounds = [S_patch.Q_patch.y_min-h_R, S_patch.Q_patch.y_max+h_R];
 
 % Computes boundary_XY values of domain 
 boundary_XY = l_theta(transpose(linspace(0, 2*pi, 10000*scale_factor)));
@@ -49,7 +49,7 @@ f_R = R.f_R;
 figure;
 scatter3(R.R_X(R.interior_idxs), R.R_Y(R.interior_idxs), R.f_R(R.interior_idxs))
 
-save(['boomerang_data/interior_mesh_nC1bound', num2str(n_C1_bound)], 'R', 'h_R');
+save(['boomerang_data/interior_mesh_nC1bound', num2str(n_C1)], 'R', 'h_R');
 %% Problem specific patch construction
 function S_patch = construct_S_patch(f, theta_A, theta_B, h, n_xi, n_eta, eps_xi_eta, eps_xy)
     alpha = 1./2;
@@ -87,19 +87,13 @@ function S_patch = construct_S_patch(f, theta_A, theta_B, h, n_xi, n_eta, eps_xi
     
     J = @(v, H) [dM_pdxi(v(1), v(2), H), dM_pdeta(v(1), v(2), H)];
     
-    xi_mesh = linspace(0, 1, n_xi+1);
-    eta_mesh = linspace(0, 1, n_eta+1);
-    
-    [XI, ETA] = meshgrid(xi_mesh, eta_mesh);
-    
-    XY = M_p_general(XI(:), ETA(:), h.*n_eta);
-    
-    f_XY = reshape(f(XY(:, 1), XY(:, 2)), [n_eta+1, n_xi+1]);
-    
-    S_patch = S_patch_obj(M_p_general, J, eps_xi_eta, eps_xy, n_xi, n_eta, 0, 1, 0, 1, f_XY, h, nan);
+    S_patch = S_patch_obj(M_p_general, J, h, eps_xi_eta, eps_xy, n_xi, n_eta, nan);
+
+    [X, Y] = S_patch.Q_patch.xy_mesh;
+    S_patch.Q_patch.f_XY = f(X, Y);
 end
 
-function C1_patch = construct_C1_patch(f, theta_A, theta_B, theta_C, theta_D, theta_E, n_bound, eps_xi_eta, eps_xy)
+function C1_patch = construct_C1_patch(f, theta_A, theta_B, theta_C, theta_D, theta_E, n_xi, n_eta, d, eps_xi_eta, eps_xy)
     alpha = 1./2;
     beta = tan(alpha.*pi./2);
     
@@ -113,11 +107,11 @@ function C1_patch = construct_C1_patch(f, theta_A, theta_B, theta_C, theta_D, th
     dM_pdeta = @(xi, eta) [-((-theta_B+theta_E)*cos(3/2*(theta_B+(-theta_B+theta_E)*eta))); beta*(-theta_B+theta_E)*cos(theta_B+(-theta_B+theta_E)*eta)];
 
     J = @(v) [dM_pdxi(v(1), v(2)), dM_pdeta(v(1), v(2))];
-    C1_patch = C1_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_bound, nan, nan, nan);
+    C1_patch = C1_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi, n_eta, d, nan, nan);
     
-    [X_B, Y_B] = C1_patch.B.xy_mesh;
-    C1_patch.B.f_XY = f(X_B, Y_B);
+    [X_L, Y_L] = C1_patch.L.xy_mesh;
+    C1_patch.L.f_XY = f(X_L, Y_L);
     
-    [X_Bc, Y_Bc] = C1_patch.B_c.xy_mesh;
-    C1_patch.B_c.f_XY = f(X_Bc, Y_Bc);
+    [X_W, Y_W] = C1_patch.W.xy_mesh;
+    C1_patch.W.f_XY = f(X_W, Y_W);
 end
