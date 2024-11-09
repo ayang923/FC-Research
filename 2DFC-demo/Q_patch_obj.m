@@ -1,7 +1,69 @@
+% Q_PATCH_OBJ - Generic patch objects used by S-type, C1-type, and C2-type
+% patches. Assumes a rectangular domain in parameter space.
+%
+% Properties:
+%   M_p - parametrization that maps Q from parameter space to real space,
+%   assumed to be vectorized
+%   J - Jacobian of M_p - 
+%   n_xi - number of points xi axis is discretized into
+%   n_eta - number of points eta axis is discretized into
+%   xi_start - minimum value of xi in Q
+%   xi_end - maximum value of xi in Q
+%   eta_start - minimum value of eta in Q
+%   eta_end - maximum value of eta in Q
+%   f_XY - function values associated with patch on discretized mesh
+%   x_min - minimum x value of M_p(Q)
+%   x_max - maximum x value of M_p(Q)
+%   y_min - minimum y alue of M_p(Q)
+%   y_max - maximum y value of M_p(Q)
+%   w_1D - one dimensional window function used to construct partition of
+%       unity
+%   w - unnormalized partition of unity function for this patch
+%   eps_xi_eta - error tolerance in xi-eta space
+%   eps_xy - error tolerance in x-y space, should be dependent on
+%       eps_xi_eta and the maximum value of the J in Q
+%
+% Methods:
+%   Q_patch_obj - Class constructor.
+%   h_mesh - returns meshsize for xi and eta for object
+%   xi_mesh - returns discretized xi mesh for object
+%   eta_mesh - returns discretized eta mesh for object
+%   xi_eta_mesh - returns entire discretzied (xi, eta) mesh associated with
+%       patch -- i.e. the domain of the patch
+%   xy_mesh - returns M_p(xi_eta_mesh)
+%   boundary_mesh - returns discretized mesh of boundary in parameter space
+%   boundary_mesh_xy - returns M_p(boundary_mesh_xy)
+%   convert_to_XY - converts M_p(xi, eta) for given vector/matrices M_p,
+%   in_patch - returns whether a given mesh in xi-eta space is in the domain
+%   round_boundary_points - rounds points within the prescribed error tolerance near the boundary to exact
+%       boundary points
+%   inverse_M_p - computes the inverse of M_p numerically using Newton's
+%       method
+%   locally_compute - computes the function value of some xi-eta point not
+%       in the domain of the patch using polynomial interpolation
+%   compute_w_normalization_xi_right - computes partition of unity
+%       normalization values for a "main" Q patch and "window" Q patch where
+%       the window Q patch is to the right of the main patch
+%   compute_w_normalization_xi_left - computes partition of unity
+%       normalization values where window patch is to the left of the
+%       main patch
+%   compute_w_normalization_eta_up - computes partition of unity
+%       normalization values where window patch is above the main patch
+%   compute_w_normalization_eta_down - computes partition of unity
+%       normalization values where window patch is below the main patch
+%
+%
+%   Note the compute_w_normalization functions operate on this
+%   assumptions about the window patches:
+%       - the window patch is parametrized such that the "bounding" edge of
+%       the window patch (edge of window patch that is"contained" within
+%       main patch) corresponds to eta-axis in the window patch's parameter
+%       space
+%
+% Author: Allen Yang
+% Email: aryang@caltech.edu
+
 classdef Q_patch_obj < handle
-    %UNTITLED Summary of this class goes here
-    %   Detailed explanation goes here
-    
     properties
         M_p
         J
@@ -16,17 +78,42 @@ classdef Q_patch_obj < handle
         x_max
         y_min
         y_max
-        phi_1D
-        phi
+        w_1D
         
         eps_xi_eta
         eps_xy
     end
     
     methods
-        function obj = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY, phi)
-            %UNTITLED Construct an instance of this class
-            %   Detailed explanation goes here
+        function obj = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi, n_eta, xi_start, xi_end, eta_start, eta_end, f_XY)
+            % Q_PATCH_OBJ Constructor for the class.
+            %    obj = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi,
+            %    n_eta, xi_start, xi_end, eta_start, eta_end, f_XY) intializes the object with the given
+            %    properties
+            %    
+            % Input parameters:
+            %    M_p (function handle) - parametrization from xi-eta space
+            %       to x-y space. Takes in a column vector of xi values and
+            %       column vector of eta values and returns a 2xlength(xi) =
+            %       2xlength(eta) matrix of x-y values
+            %    J (function handle) - Jacobian of M_p. Takes in a 2x1
+            %       vector [xi; eta] and returns the 2x2 Jacobian for that
+            %       given xi-eta
+            %    eps_xi_eta (double) - error tolerance in xi-eta space
+            %    eps_xy (double) - error tolerance in x-y space, is
+            %       dependent on eps_xi_eta and J
+            %    n_xi (int) - number of values xi axis is discretized into
+            %    n_eta (int) - number of values eta axis is discretized into
+            %    xi_start (double) - minimum xi value of rectangle in parameter space 
+            %    xi_end (double) - maximum xi value of rectangle in
+            %       parameter space
+            %    eta_start (double) - minimum eta value of rectangle in
+            %       paramter space
+            %    eta_end (double) -maximum eta value of rectangle in
+            %       parameter space
+            %    f_XY (double) - n_eta x n_xi sized matrix containing
+            %       function values associated with patch
+            
             obj.M_p = M_p;
             obj.J = J;
             
@@ -49,33 +136,47 @@ classdef Q_patch_obj < handle
             obj.y_min = min(XY(:, 2));
             obj.y_max = max(XY(:, 2));
             
-            obj.phi_1D = @(x) erfc(6*(-2*x+1))/2;
-            obj.phi = phi; %phi not defined until overlaps are given
+            obj.w_1D = @(x) erfc(6*(-2*x+1))/2;
         end
 
         function [h_xi, h_eta] = h_mesh(obj)
+            % h_mesh returns the step sizes for xi and eta
             h_xi =(obj.xi_end-obj.xi_start)./ (obj.n_xi-1);
             h_eta = (obj.eta_end-obj.eta_start) ./ (obj.n_eta-1);
         end
         
         function mesh = xi_mesh(obj)
+            % xi_mesh returns the discretized xi mesh of patch
             mesh = transpose(linspace(obj.xi_start, obj.xi_end, obj.n_xi));
         end
         
         function mesh = eta_mesh(obj)
+            % eta_mesh returns the discretized eta mesh of patch
             mesh = transpose(linspace(obj.eta_start, obj.eta_end, obj.n_eta));
         end
         
         function [XI, ETA] = xi_eta_mesh(obj)
+            % xi_eta_mesh returns entire xi-eta cartesian mesh of patch
             [XI, ETA] = meshgrid(obj.xi_mesh(), obj.eta_mesh());
         end
         
         function [X, Y] = xy_mesh(obj)
+            % xy_mesh returns entire x-y cartesian mesh of patch
+            %    note this is equivalent to M_p(XI, ETA)
             [XI, ETA] = obj.xi_eta_mesh();
             [X, Y] = obj.convert_to_XY(XI, ETA);
         end
         
         function [boundary_mesh_xi, boundary_mesh_eta] = boundary_mesh(obj, pad_boundary)
+            % boundary_mesh returns a discrete mesh of the boundary of patch in xi-eta
+            %   space
+            % 
+            % Input parameters:
+            %    pad_boundary (boolean) - pads boundary mesh with a little
+            %       space if true, used to compensate for points lost
+            %       possibly lost by discretized boundary
+            % TODO: let number of points being used in discretization be
+            %   input parameter
             if pad_boundary
                 [h_xi, h_eta] = obj.h_mesh;
             else
@@ -88,21 +189,40 @@ classdef Q_patch_obj < handle
         end
         
         function [boundary_mesh_x, boundary_mesh_y] = boundary_mesh_xy(obj, pad_boundary)
+            % boundary_mesh_xy returns the x-y coordinates of the
+            %   discretized boundary mesh from boundary_mesh
             [boundary_mesh_xi, boundary_mesh_eta] = obj.boundary_mesh(pad_boundary);
             [boundary_mesh_x, boundary_mesh_y] = obj.convert_to_XY(boundary_mesh_xi, boundary_mesh_eta);
         end
         
         function [X, Y] = convert_to_XY(obj, XI, ETA)
+            % convert_to_XY converts a certain XI, ETA mesh to X, Y
+            %   coordinates, XI and ETA are assumed to be the same size
+            % 
+            % Input parameters:
+            %   XI (double) - matrix of xi values
+            %   ETA (double) - matrix of eta values
+            %
+            % Returns:
+            %   X (double) - matrix of converted X values returned in the
+            %       same size as XI and ETA
+            %   Y (double) - matrix of converted Y values returned in the
+            %       same size as XI and ETA
             XY = obj.M_p(XI(:), ETA(:));
             X = reshape(XY(:, 1), size(XI));
             Y = reshape(XY(:, 2), size(ETA));
         end
         
         function patch_msk = in_patch(obj, xi, eta)
+            % in_patch returns a boolean mask for given xi, eta matrices
+            %   determining wheter the coordinates are within the bounds of
+            %   the patch
             patch_msk = xi >= obj.xi_start & xi <= obj.xi_end & eta >= obj.eta_start & eta <= obj.eta_end;
         end
         
         function [xi, eta] = round_boundary_points(obj, xi, eta)
+            % round_boundary_points takes given xi, eta and rounds points
+            %   that are within the xi, eta error tolerance to exact boundary values 
             xi(abs(xi - obj.xi_start) < obj.eps_xi_eta) = obj.xi_start;
             xi(abs(xi-obj.xi_end) < obj.eps_xi_eta) = obj.xi_end;
             eta(abs(eta - obj.eta_start) < obj.eps_xi_eta) = obj.eta_start;
@@ -110,8 +230,15 @@ classdef Q_patch_obj < handle
         end
         
         function [xi, eta, converged] = inverse_M_p(obj, x, y, initial_guesses)
-            % initial_guess is [xi_1, xi_2, xi_3, ...; eta_1, eta_2, eta_3,
-            % ...] matrix
+            % inverse_M_p uses Newton's method to compute the inverse of
+            %   M_p for scalar x and y
+            %
+            % Input parameters:
+            %    x (double) - scalar x value
+            %    y (double) - scalar y value
+            %    initial_guesses (double) - 2 x n matrix of n initial
+            %       guesses to use for Newton's method. If nan, the method
+            %       will use a boundary mesh as the initial guesses
             
             if isnan(initial_guesses)
                 N = 20;
@@ -142,6 +269,17 @@ classdef Q_patch_obj < handle
         end
 
         function [f_xy, in_range] = locally_compute(obj, xi, eta, M)
+            % locally_compute uses two step one dimensional polynomial interpolation to estimate the
+            %   value of f for any xi, eta within the bounds of the patch (not necessarily on discrete mesh)
+            %
+            % Input parameters:
+            %    xi (double) - scalar xi value within bounds of patch in
+            %       parameter space
+            %    eta (double) - scalar eta value within bounds of patch in
+            %       parameter space
+            %   M (int) - number of interpolation points used for each one
+            %       dimensional procedure
+            
             % check if xi, eta are within bounds of Q
             if ~obj.in_patch(xi, eta)
                 f_xy = nan;
@@ -182,76 +320,151 @@ classdef Q_patch_obj < handle
             f_xy = barylag([interpol_eta_mesh, interpol_xi_exact], eta);
         end
         
-        function [main_patch_phi, window_patch_phi] = compute_phi_normalization_xi_right(obj, window_patch)
-            main_xi_corner = compute_xi_corner(obj, window_patch, true, window_patch.xi_start, true);
+        function apply_w_normalization_xi_right(obj, window_patch)
+            % compute_w_normalization_xi_right computes the partition of
+            %   unity normalization values for when the window patch is to
+            %   the right of the patch
+            %
+            % Input parameter:
+            %   window_patch (Q_patch_obj) - window patch
+            % 
+            % Returns:
+            %   main_patch_w (double) - normalization constants for the
+            %       domain of main patch, has the same shape as obj.f_XY
+            %   window_patch_w (double) - normalization constants for the
+            %       domain of window patch, has the same shape as
+            %       window_patch.f_XY
+            
+            main_xi_corner = compute_xi_corner(obj, window_patch, true, window_patch.xi_end, true);
             window_xi_corner = compute_xi_corner(window_patch, obj, true, obj.xi_end, false);
 
             main_R_xi = main_xi_corner - obj.xi_end;
             main_xi_0 = obj.xi_end;
-            obj.phi = @(xi, eta) obj.phi_1D((xi-main_xi_0)/main_R_xi);
+            main_w = @(xi, eta) obj.w_1D((xi-main_xi_0)/main_R_xi);
             
-            window_patch_phi = compute_phi_normalization_window(obj, window_patch, window_xi_corner);
+            window_w = compute_w_normalization_window(obj, main_w, window_patch, window_xi_corner, false);
 
             [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_xi_overlap_mesh(obj, main_xi_corner, true);
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);    
             
-            [main_XI, main_ETA] = obj.xi_eta_mesh;
-            main_patch_phi = obj.phi(main_XI, main_ETA);
-            main_patch_phi = update_norm_arr(main_patch_phi, window_patch, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+            w_unnormalized =  main_w(XI_overlap, ETA_overlap);
+            obj.apply_w(w_unnormalized, window_patch, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
         end
         
-        function [main_patch_phi, window_patch_phi] = compute_phi_normalization_xi_left(obj, window_patch)
-            main_xi_corner = compute_xi_corner(obj, window_patch, true, window_patch.xi_start, false);
+        function apply_w_normalization_xi_left(obj, window_patch)
+            % compute_w_normalization_xi_left computes the partition of
+            %   unity normalization values for when the window patch is to
+            %   the left of the patch
+            %
+            % Input parameter:
+            %   window_patch (Q_patch_obj) - window patch
+            % 
+            % Returns:
+            %   main_patch_w (double) - normalization constants for the
+            %       domain of main patch, has the same shape as obj.f_XY
+            %   window_patch_w (double) - normalization constants for the
+            %       domain of window patch, has the same shape as
+            %       window_patch.f_XY
+            main_xi_corner = compute_xi_corner(obj, window_patch, true, window_patch.xi_end, false);
             window_xi_corner = compute_xi_corner(window_patch, obj, true, obj.xi_start, false);
 
             main_R_xi = main_xi_corner - obj.xi_start;
             main_xi_0 = obj.xi_start;
-            obj.phi = @(xi, eta) obj.phi_1D((xi-main_xi_0)/main_R_xi);
+            main_w = @(xi, eta) obj.phi_1D((xi-main_xi_0)/main_R_xi);
             
-            window_patch_phi = compute_phi_normalization_window(obj, window_patch, window_xi_corner);
+            window_w = compute_w_normalization_window(obj, main_w, window_patch, window_xi_corner, false);
 
             [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_xi_overlap_mesh(obj, main_xi_corner, false);
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);                
             
-            [main_XI, main_ETA] = obj.xi_eta_mesh;
-            main_patch_phi = obj.phi(main_XI, main_ETA);
-            main_patch_phi = update_norm_arr(main_patch_phi, window_patch, X_overlap, Y_overlap, XI_j, ETA_j, nan);        
+            w_unnormalized = main_w(main_XI, main_ETA);
+            obj.apply_w(w_unnormalized, window_patch, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);        
         end
     
-        function [main_patch_phi, window_patch_phi] = compute_phi_normalization_eta_up(obj, window_patch)
+        function apply_w_normalization_eta_up(obj, window_patch)
+            % compute_w_normalization_eta_up computes the partition of
+            %   unity normalization values for when the window patch above
+            %   the patch
+            %
+            % Input parameter:
+            %   window_patch (Q_patch_obj) - window patch
+            % 
+            % Returns:
+            %   main_patch_w (double) - normalization constants for the
+            %       domain of main patch, has the same shape as obj.f_XY
+            %   window_patch_w (double) - normalization constants for the
+            %       domain of window patch, has the same shape as
+            %       window_patch.f_XY
             main_eta_corner = compute_eta_corner(obj, window_patch, true, window_patch.xi_start, true);
             window_xi_corner = compute_xi_corner(window_patch, obj, false, obj.eta_end, false);
 
             main_R_eta = main_eta_corner - obj.eta_end;
             main_eta_0 = obj.eta_end;
-            obj.phi = @(xi, eta) obj.phi_1D((eta-main_eta_0)/main_R_eta);
+            main_w = @(xi, eta) obj.w_1D((eta-main_eta_0)/main_R_eta);
             
-            window_patch_phi = compute_phi_normalization_window(obj, window_patch, window_xi_corner);
+            window_w = compute_w_normalization_window(obj, main_w, window_patch, window_xi_corner, true);
 
             [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(obj, main_eta_corner, true);
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);         
             
-            [main_XI, main_ETA] = obj.xi_eta_mesh;
-            main_patch_phi = obj.phi(main_XI, main_ETA);
-            main_patch_phi = update_norm_arr(main_patch_phi, window_patch, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+            w_unnormalized = main_w(XI_overlap, ETA_overlap);
+            obj.apply_w(w_unnormalized, window_patch, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
         end
         
-        function [main_patch_phi, window_patch_phi] = compute_phi_normalization_eta_down(obj, window_patch)
+        function apply_w_normalization_eta_down(obj, window_patch)
+            % compute_w_normalization_eta_down computes the partition of
+            %   unity normalization values for when the window patch is
+            %   below the patch
+            %
+            % Input parameter:
+            %   window_patch (Q_patch_obj) - window patch
+            % 
+            % Returns:
+            %   main_patch_w (double) - normalization constants for the
+            %       domain of main patch, has the same shape as obj.f_XY
+            %   window_patch_w (double) - normalization constants for the
+            %       domain of window patch, has the same shape as
+            %       window_patch.f_XY
             main_eta_corner = compute_eta_corner(obj, window_patch, true, window_patch.xi_start, false);
             window_xi_corner = compute_xi_corner(window_patch, obj, false, obj.eta_start, false);
 
             main_R_eta = main_eta_corner - obj.eta_start;
             main_eta_0 = obj.eta_start;
-            obj.phi = @(xi, eta) obj.phi_1D((eta-main_eta_0)/main_R_eta);
+            main_w = @(xi, eta) obj.w_1D((eta-main_eta_0)/main_R_eta);
             
-            window_patch_phi = compute_phi_normalization_window(obj, window_patch, window_xi_corner);
+            [window_w] = compute_w_normalization_window(obj, main_w, window_patch, window_xi_corner, true);
 
             [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(obj, main_eta_corner, false);
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);        
             
-            [main_XI, main_ETA] = obj.xi_eta_mesh;
-            main_patch_phi = obj.phi(main_XI, main_ETA);
-            main_patch_phi = update_norm_arr(main_patch_phi, window_patch, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+            w_unnormalized = main_w(XI_overlap, ETA_overlap);
+            obj.apply_w(w_unnormalized, window_patch, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+        end
+        
+        function apply_w(obj, w_unnormalized, window_patch, window_w, overlap_X, overlap_Y, overlap_XI_j, overlap_ETA_j, initial_guesses)
+            for i = 1:size(overlap_X, 1)
+                if mod(i, 2) == 1
+                    j_lst = 1:size(overlap_X, 2);
+                else
+                    j_lst = size(overlap_X, 2):-1:1;
+                end
+
+                for j = j_lst
+                    [window_patch_xi, window_patch_eta, converged] = window_patch.inverse_M_p(overlap_X(i, j), overlap_Y(i, j), initial_guesses);
+
+                    if converged
+                        xi_i = overlap_XI_j(i, j) + 1;
+                        xi_j = overlap_ETA_j(i, j) + 1;
+                        obj.f_XY(xi_j, xi_i) = obj.f_XY(xi_j, xi_i).*w_unnormalized(i, j) ./ (window_w(window_patch_xi, window_patch_eta)+w_unnormalized(i, j));
+                    elseif ~converged
+                        warning("Nonconvergence in computing C2_norm")
+                    end
+
+                    if converged
+                        initial_guesses = [window_patch_xi; window_patch_eta]; % using previous point as next initial guess
+                    end
+                end
+            end
         end
     end
 end
@@ -353,8 +566,6 @@ function [main_eta_corner] = compute_eta_corner(main_patch, window_patch, window
         end
 end
 
-
-
 function [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(main_patch, eta_corner, window_patch_up)
 %COMPUTE_XI_OVERLAP_MESH Summary of this function goes here
 %   Detailed explanation goes here
@@ -372,45 +583,22 @@ function [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(main_
     ETA_overlap = ETA_j * h_eta + main_patch.eta_start;
 end
 
-function [norm_arr] = update_norm_arr(norm_arr, window_patch, overlap_X, overlap_Y, overlap_XI_j, overlap_ETA_j, initial_guesses)
-    for i = 1:size(overlap_X, 1)
-        if mod(i, 2) == 1
-            j_lst = 1:size(overlap_X, 2);
-        else
-            j_lst = size(overlap_X, 2):-1:1;
-        end
-        
-        for j = j_lst
-            [window_patch_xi, window_patch_eta, converged] = window_patch.inverse_M_p(overlap_X(i, j), overlap_Y(i, j), initial_guesses);
-            
-            if converged
-                xi_i = overlap_XI_j(i, j) + 1;
-                xi_j = overlap_ETA_j(i, j) + 1;
-                norm_arr(xi_j, xi_i) = norm_arr(xi_j, xi_i) + window_patch.phi(window_patch_xi, window_patch_eta);
-            elseif ~converged
-                warning("Nonconvergence in computing C2_norm")
-            end
-            
-            if converged
-                initial_guesses = [window_patch_xi; window_patch_eta]; % using previous point as next initial guess
-            end
-        end
+function [window_w] = compute_w_normalization_window(main_patch, main_w, window_patch, window_xi_corner, up_down)
+    if up_down
+        window_R_xi = window_xi_corner - window_patch.xi_start;
+        window_xi_0 = window_patch.xi_start;
+        window_w = @(xi, eta) window_patch.w_1D((xi-window_xi_0)/window_R_xi);
+    else
+        window_R_xi = window_xi_corner - window_patch.xi_end;
+        window_xi_0 = window_patch.xi_end;
+        window_w = @(xi, eta) window_patch.w_1D((xi-window_xi_0)/window_R_xi);
     end
-end
 
-function window_patch_phi = compute_phi_normalization_window(main_patch, window_patch, window_xi_corner)
-    window_R_xi = window_xi_corner - window_patch.xi_start;
-    window_xi_0 = window_patch.xi_start;
-    window_patch.phi = @(xi, eta) window_patch.phi_1D((xi-window_xi_0)/window_R_xi);
-
-    [XI_overlap_window, ETA_overlap_window, XI_j_window, ETA_j_window] = compute_xi_overlap_mesh(window_patch, window_xi_corner, false);
+    [XI_overlap_window, ETA_overlap_window, XI_j_window, ETA_j_window] = compute_xi_overlap_mesh(window_patch, window_xi_corner, ~up_down);
     [X_overlap_window, Y_overlap_window] = window_patch.convert_to_XY(XI_overlap_window, ETA_overlap_window);
     
-    [window_XI, window_ETA] = window_patch.xi_eta_mesh;
-    window_patch_phi = window_patch.phi(window_XI, window_ETA);
-    window_patch_phi = update_norm_arr(window_patch_phi, main_patch, X_overlap_window, Y_overlap_window, XI_j_window, ETA_j_window, nan);
+    w_unnormalized = window_w(XI_overlap_window, ETA_overlap_window);
+    window_patch.apply_w(w_unnormalized, main_patch, main_w, X_overlap_window, Y_overlap_window, XI_j_window, ETA_j_window, nan);
 end
-
-
 
 

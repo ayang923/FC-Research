@@ -4,7 +4,7 @@ clc; clear; close all;
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 l_theta = @(theta) [2*sin(theta/2), -sin(theta)];
 
-scale_factor = 4;
+scale_factor = 2;
 
 h_R = 0.01 / scale_factor;
 
@@ -29,8 +29,8 @@ S_patch = construct_S_patch(f, 0.5, 2*pi-0.5, h_S, n_S_w, d, eps_xi_eta, eps_xy)
 save(['teardrop_data/patches_nC2', num2str(n_C2), '_d', num2str(d)], 'C2_patch', 'window_patch_xi', 'window_patch_eta', 'S_patch')
 
 %% Computing Points of Interior Cartesian Mesh
-R_x_bounds = [C2_patch.W.x_min-h_R, S_patch.Q_patch.x_max+h_R];
-R_y_bounds = [S_patch.Q_patch.y_min-h_R, S_patch.Q_patch.y_max+h_R];
+R_x_bounds = [C2_patch.W.x_min-h_R, S_patch.Q.x_max+h_R];
+R_y_bounds = [S_patch.Q.y_min-h_R, S_patch.Q.y_max+h_R];
 
 % Computes boundary_XY values of domain 
 boundary_XY = l_theta(transpose(linspace(0, 2*pi, 10000*scale_factor)));
@@ -78,6 +78,6 @@ function S_patch = construct_S_patch(f, theta_A, theta_B, h, n_xi, n_eta, eps_xi
     J_general = @(v, H) [theta_diff*cos(l_A(v(1))/2)-v(2)*H*theta_diff*sin(l_A(v(1))), H*cos(l_A(v(1))); -1*theta_diff*cos(l_A(v(1)))-v(2)*H*theta_diff/2*sin(l_A(v(1))/2), H*cos(l_A(v(1))/2)];
     
     S_patch = S_patch_obj(M_p_general, J_general, h, eps_xi_eta, eps_xy, n_xi, n_eta, nan);
-    [X, Y] = S_patch.Q_patch.xy_mesh;
-    S_patch.Q_patch.f_XY = f(X, Y);
+    [X, Y] = S_patch.Q.xy_mesh;
+    S_patch.Q.f_XY = f(X, Y);
 end

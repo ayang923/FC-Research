@@ -1,3 +1,68 @@
+% R_CARTESIAN_MESH_OBJ - Generic patch objects used by S-type, C1-type, and C2-type
+% patches. Assumes a rectangular domain in parameter space.
+%
+% Properties:
+%   M_p - parametrization that maps Q from parameter space to real space,
+%   assumed to be vectorized
+%   J - Jacobian of M_p - 
+%   n_xi - number of points xi axis is discretized into
+%   n_eta - number of points eta axis is discretized into
+%   xi_start - minimum value of xi in Q
+%   xi_end - maximum value of xi in Q
+%   eta_start - minimum value of eta in Q
+%   eta_end - maximum value of eta in Q
+%   f_XY - function values associated with patch on discretized mesh
+%   x_min - minimum x value of M_p(Q)
+%   x_max - maximum x value of M_p(Q)
+%   y_min - minimum y alue of M_p(Q)
+%   y_max - maximum y value of M_p(Q)
+%   w_1D - one dimensional window function used to construct partition of
+%       unity
+%   w - unnormalized partition of unity function for this patch
+%   eps_xi_eta - error tolerance in xi-eta space
+%   eps_xy - error tolerance in x-y space, should be dependent on
+%       eps_xi_eta and the maximum value of the J in Q
+%
+% Methods:
+%   Q_patch_obj - Class constructor.
+%   h_mesh - returns meshsize for xi and eta for object
+%   xi_mesh - returns discretized xi mesh for object
+%   eta_mesh - returns discretized eta mesh for object
+%   xi_eta_mesh - returns entire discretzied (xi, eta) mesh associated with
+%       patch -- i.e. the domain of the patch
+%   xy_mesh - returns M_p(xi_eta_mesh)
+%   boundary_mesh - returns discretized mesh of boundary in parameter space
+%   boundary_mesh_xy - returns M_p(boundary_mesh_xy)
+%   convert_to_XY - converts M_p(xi, eta) for given vector/matrices M_p,
+%   in_patch - returns whether a given mesh in xi-eta space is in the domain
+%   round_boundary_points - rounds points within the prescribed error tolerance near the boundary to exact
+%       boundary points
+%   inverse_M_p - computes the inverse of M_p numerically using Newton's
+%       method
+%   locally_compute - computes the function value of some xi-eta point not
+%       in the domain of the patch using polynomial interpolation
+%   compute_w_normalization_xi_right - computes partition of unity
+%       normalization values for a "main" Q patch and "window" Q patch where
+%       the window Q patch is to the right of the main patch
+%   compute_w_normalization_xi_left - computes partition of unity
+%       normalization values where window patch is to the left of the
+%       main patch
+%   compute_w_normalization_eta_up - computes partition of unity
+%       normalization values where window patch is above the main patch
+%   compute_w_normalization_eta_down - computes partition of unity
+%       normalization values where window patch is below the main patch
+%
+%
+%   Note the compute_w_normalization functions operate on this
+%   assumptions about the window patches:
+%       - the window patch is parametrized such that the "bounding" edge of
+%       the window patch (edge of window patch that is"contained" within
+%       main patch) corresponds to eta-axis in the window patch's parameter
+%       space
+%
+% Author: Allen Yang
+% Email: aryang@caltech.edu
+
 classdef R_cartesian_mesh_obj < handle
     %Cartesian mesh being interpolated onto
     

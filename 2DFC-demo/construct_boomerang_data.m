@@ -4,7 +4,7 @@ clc; clear; close all;
 %% Setting Parameters
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 
-alpha = 1./2;
+alpha = 3/2;
 beta = tan(alpha.*pi./2);
 l_theta = @(theta) [-2./3.*sin(3./2.*theta), beta.*sin(theta)];
 
@@ -52,7 +52,7 @@ scatter3(R.R_X(R.interior_idxs), R.R_Y(R.interior_idxs), R.f_R(R.interior_idxs))
 save(['boomerang_data/interior_mesh_nC1bound', num2str(n_C1)], 'R', 'h_R');
 %% Problem specific patch construction
 function S_patch = construct_S_patch(f, theta_A, theta_B, h, n_xi, n_eta, eps_xi_eta, eps_xy)
-    alpha = 1./2;
+    alpha = 3/2;
     beta = tan(alpha.*pi./2);
     
     l_theta = @(theta) [-2./3.*sin(3./2.*theta), beta.*sin(theta)];
@@ -94,7 +94,7 @@ function S_patch = construct_S_patch(f, theta_A, theta_B, h, n_xi, n_eta, eps_xi
 end
 
 function C1_patch = construct_C1_patch(f, theta_A, theta_B, theta_C, theta_D, theta_E, n_xi, n_eta, d, eps_xi_eta, eps_xy)
-    alpha = 1./2;
+    alpha = 3/2;
     beta = tan(alpha.*pi./2);
     
     l_theta = @(theta) [-2./3.*sin(3./2.*theta), beta.*sin(theta)];
