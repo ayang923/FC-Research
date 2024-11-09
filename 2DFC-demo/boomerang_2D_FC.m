@@ -1,17 +1,12 @@
 clc; clear; close all;
-% 2DFC on boomerang domain
-%% Setting Parameters
+
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 
-n_C1_bound = 321;
-
-C = 27;
 d = 7;
+C = 27;
 n_r = 6;
 
 M = d+3;
-
-%% Loading FC Data
 if(exist(['FC_data/A_d',num2str(d),'_C', num2str(C), '_r', num2str(n_r), '.mat']) == 0 | ...
    exist(['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat']) == 0)
     disp('FC data not found. Generating FC operators... \n');
@@ -25,68 +20,19 @@ load(['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat']);
 A = double(A);
 Q = double(Q);
 
-%% Loading Precomputed Patches and Interior Mesh
-load(['boomerang_data/patches_nC1bound', num2str(n_C1_bound), '_d', num2str(d)])
-load(['boomerang_data/interior_mesh_nC1bound', num2str(n_C1_bound)])
+alpha = 3/2;
+beta = tan(alpha.*pi./2);
 
-%% Computing window functions for C1 Patch
-[C1_L_norm, C1_W_norm, xi_norm, eta_norm] = C1_patch.compute_phi_normalization(window_patch_xi, window_patch_eta);
+l_1 = @(theta) -2/3*sin(theta*3*pi);
+l_2 = @(theta) beta*sin(theta*2*pi);
+l_1_prime = @(theta) -2*pi*cos(theta*3*pi);
+l_2_prime = @(theta) 2*pi*beta*cos(theta*2*pi);
+l_1_dprime = @(theta) 6*pi^2*sin(theta*3*pi);
+l_2_dprime = @(theta) -4*pi^2*beta*sin(theta*2*pi);
 
-%% FC in Parameter Space
-[C1_fcont_patch_L, C1_fcont_patch_W_refined, C1_fcont_patch_W_unrefined] = C1_patch.FC(C, n_r, d, A, Q, M, C1_L_norm, C1_W_norm);
-window_fcont_patch_xi = window_patch_xi.FC(C, n_r, d, A, Q, xi_norm);
-window_fcont_patch_eta = window_patch_eta.FC(C, n_r, d, A, Q, eta_norm);
-S_fcont_patch = S_patch.FC(C, n_r, d, A, Q, nan);
+h = 0.005;
 
-fcont_patches = {C1_fcont_patch_L, C1_fcont_patch_W_refined, C1_fcont_patch_W_unrefined, window_fcont_patch_xi, window_fcont_patch_eta, S_fcont_patch};
+curve_1 = Curve_obj(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, 0, 1/10, 1/10, 0, 0, h, nan);
+curve_seq = Curve_seq_obj(curve_1, 1);
 
-%% Interpolation onto Cartesian Mesh
-% computes bounds of R
-R_x_bounds = [S_fcont_patch.x_min-h_R, S_fcont_patch.x_max+h_R];
-R_y_bounds = [S_fcont_patch.y_min-h_R, S_fcont_patch.y_max+h_R];
-
-% Constructs continued cartesian mesh object
-R_FC = R.extend_R(R_x_bounds(1), R_x_bounds(2), R_y_bounds(1), R_y_bounds(2), true);
-
-clear 'R'
-
-%Fills interior with exact values and interpolates patch values onto grid
-for patch = fcont_patches
-    R_FC.interpolate_patch(patch{1}, d+3);
-end
-
-%% Plots
-% figure;
-% s = surf(R_FC.R_X, R_FC.R_Y, R_FC.f_R);
-% s.EdgeColor = 'none';
-% 
-% figure;
-% scatter(R_FC.R_X(:), R_FC.R_Y(:), 100, R_FC.f_R(:), 'filled');
-% colorbar;
-% colormap(jet);
-% hold on;
-% plot(R_FC.boundary_X, R_FC.boundary_Y)
-% 
-% figure;
-% scatter3(R_FC.R_X(:), R_FC.R_Y(:), R_FC.f_R(:));
-
-%% FFT and Error Calculation
-R_FC.compute_fc_coeffs()
-[X_err, Y_err, f_err, interior_idxs] = R_FC.ifft_interpolation(R_FC.h * 0.5, true);
-
-% load finer interior data
-% load(['boomerang_data/interior_mesh_nC1bound', num2str(n_C1_bound*2)])
-% R_exact = R.extend_R(X_err(1, 1), X_err(1, end), Y_err(1, 1), Y_err(end, 1), false);
-% clear 'R';
-
-err = abs(f(X_err(interior_idxs), Y_err(interior_idxs)) - f_err(interior_idxs));
-max(err, [], 'all') %l_infinity error
-
-figure;
-scatter(X_err(interior_idxs), Y_err(interior_idxs), 100, err, 'filled');
-
-% Add a color bar
-colorbar;
-
-% Set colormap
-colormap(jet);
+FC2D(f, h, curve_seq, 1e-13, 1e-13, d, C, n_r, A, Q, M)

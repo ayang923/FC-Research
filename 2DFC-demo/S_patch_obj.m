@@ -23,17 +23,11 @@ classdef S_patch_obj < handle
             obj.h = h;
         end
         
-        function S_fcont_patch = FC(obj, C, n_r, d, A, Q, phi_normalization)
+        function S_fcont_patch = FC(obj, C, n_r, d, A, Q)
             h_eta = (obj.Q.eta_end-obj.Q.eta_start)/(obj.Q.n_eta-1);
+            fcont = fcont_gram_blend_S(obj.Q.f_XY, d, A, Q);
             
-            [XI, ETA] = obj.Q.xi_eta_mesh();
-            if ~isnan(phi_normalization)
-                fcont = fcont_gram_blend_S(obj.Q.f_XY.*obj.Q.phi(XI, ETA)./phi_normalization, d, A, Q);
-            else
-                fcont = fcont_gram_blend_S(obj.Q.f_XY, d, A, Q);
-            end
-            
-            S_fcont_patch = Q_patch_obj(obj.Q.M_p, obj.Q.J, obj.Q.eps_xi_eta, obj.Q.eps_xy, obj.Q.n_xi, C*n_r+1, obj.Q.xi_start, obj.Q.xi_end, obj.Q.eta_start-C*h_eta, obj.Q.eta_start, fcont, nan);
+            S_fcont_patch = Q_patch_obj(obj.Q.M_p, obj.Q.J, obj.Q.eps_xi_eta, obj.Q.eps_xy, obj.Q.n_xi, C*n_r+1, obj.Q.xi_start, obj.Q.xi_end, obj.Q.eta_start-C*h_eta, obj.Q.eta_start, fcont);
         end
     end
 end

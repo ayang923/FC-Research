@@ -32,7 +32,7 @@ classdef C2_patch_obj < handle
             obj.L = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, d, n_eta-d+1, 0, (d-1)*h_xi, (d-1)*h_eta, 1, f_L);
         end
                 
-        function [C2_fcont_patch_L, C2_fcont_patch_W, C2_fcont_patch_corner] = FC(obj, C, n_r, d, A, Q, L_norm, W_norm)
+        function [C2_fcont_patch_L, C2_fcont_patch_W, C2_fcont_patch_corner] = FC(obj, C, n_r, d, A, Q, M)
             % FC Computes the blending-to-zero extension values for this
             % patch and returns them as three Q-patch type objects
             %
@@ -60,19 +60,8 @@ classdef C2_patch_obj < handle
             %       values in corner region
             
             [h_xi, h_eta] = obj.W.h_mesh; %h mesh is the same for both W and L
-            if ~isnan(W_norm)
-                [XI_W, ETA_W] = obj.W.xi_eta_mesh;
-                f_XY_W = obj.W.f_XY .* obj.W.phi(XI_W, ETA_W) ./ W_norm;
-            else
-                f_XY_W = obj.W.f_XY;
-            end
-            
-            if ~isnan(L_norm)
-                [XI_L, ETA_L] = obj.L.xi_eta_mesh;
-                f_XY_L = obj.L.f_XY .* obj.L.phi(XI_L, ETA_L) ./ L_norm;
-            else
-                f_XY_L = obj.L.f_XY;
-            end
+            f_XY_W = obj.W.f_XY;
+            f_XY_L = obj.L.f_XY;
             
             fcont_W = fcont_gram_blend_S(f_XY_W, d, A, Q);
             fcont_corner = transpose(fcont_gram_blend_S(fcont_W', d, A, Q));

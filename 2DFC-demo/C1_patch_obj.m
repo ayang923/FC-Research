@@ -35,7 +35,7 @@ classdef C1_patch_obj < handle
             obj.W = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, (n_xi+1)/2, d, 0, 1/2, 1/2, 1/2+(d-1)*h_eta, f_W);
         end
         
-        function  [C1_fcont_patch_L, C1_fcont_patch_W_refined, C1_fcont_patch_W_unrefined] = FC(obj, C, n_r, d, A, Q, M, L_norm, W_norm)
+        function  [C1_fcont_patch_L, C1_fcont_patch_W_refined, C1_fcont_patch_W_unrefined] = FC(obj, C, n_r, d, A, Q, M)
             % FC Computes the blending-to-zero extension values for this
             % patch and returns them as three Q-patch type objects
             %
@@ -65,19 +65,9 @@ classdef C1_patch_obj < handle
             %    C1_fcont_patch_W_unrefined(Q_patch_obj): blending-to-zero
             %       values for W in region that doesn't overlap with
             %       blending-to-zero values for L
-            if ~isnan(L_norm)
-                [XI, ETA] = obj.L.xi_eta_mesh;
-                L_f_XY = obj.L.f_XY .* obj.L.phi(XI, ETA) ./ L_norm;
-            else
-                L_f_XY = obj.L.f_XY;
-            end
+            L_f_XY = obj.L.f_XY;            
+            W_f_XY = obj.W.f_XY;
             
-            if ~isnan(W_norm)
-                [XI, ETA] = obj.W.xi_eta_mesh;
-                W_f_XY = obj.W.f_XY .* obj.W.phi(XI, ETA) ./ W_norm;
-            else
-                W_f_XY = obj.W.f_XY;
-            end
             [h_xi, h_eta] = obj.L.h_mesh;
 
             L_fcont = transpose(fcont_gram_blend_S(L_f_XY', d, A, Q));
@@ -148,7 +138,7 @@ classdef C1_patch_obj < handle
             end
         end
         
-        function [C1_L_norm, C1_W_norm, window_L_norm, window_W_norm] = compute_w_normalization(obj, window_patch_L, window_patch_W)
+        function apply_w_W(obj, window_patch_W)
             % compute_w_normalization computes normalization constants for
             % partition of unity associated with L, W, and their respective
             % window patches
@@ -167,8 +157,11 @@ classdef C1_patch_obj < handle
             %       values for window_patch_L
             %    window_W_norm (Q_patch_obj): partition of unity normalization
             %       values for window_patch_eta
-            [C1_W_norm, window_W_norm] = obj.W.compute_w_normalization_xi_left(window_patch_W.Q_patch);
-            [C1_L_norm, window_L_norm] = obj.L.compute_w_normalization_eta_down(window_patch_L.Q_patch);
+            obj.W.apply_w_normalization_xi_left(window_patch_W.Q);
+        end
+        
+        function apply_w_L(obj, window_patch_L)
+            obj.L.apply_w_normalization_eta_down(window_patch_L.Q);
         end
     end
 end

@@ -19,7 +19,7 @@ for i = 2:Nmax
         break
     end
 end
-i
+
 if i == Nmax
     converged = false;
 else

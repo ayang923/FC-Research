@@ -20,7 +20,7 @@ classdef Curve_obj < handle
     end
     
     methods
-        function obj = Curve_obj(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, n, n_C_0, n_C_1, n_S_0, n_S_1, h_norm, next_curve)
+        function obj = Curve_obj(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, n, frac_n_C_0, frac_n_C_1, frac_n_S_0, frac_n_S_1, h_norm, next_curve)
             obj.l_1 = l_1;
             obj.l_2 = l_2;
             obj.l_1_prime = l_1_prime;
@@ -35,11 +35,27 @@ classdef Curve_obj < handle
             else
                 obj.n = n;
             end
-            obj.n_C_0 = n_C_0;
-            obj.n_C_1 = n_C_1;
-            obj.n_S_0 = n_S_0;
-            obj.n_S_1 = n_S_1;
-            
+            if frac_n_C_0 == 0
+                obj.n_C_0 = ceil(1/10*obj.n);
+            else
+                obj.n_C_0 = ceil(frac_n_C_0*obj.n);
+            end
+            if frac_n_C_1 == 0
+                obj.n_C_1 = ceil(1/10*obj.n);
+            else
+                obj.n_C_1 = ceil(frac_n_C_1*obj.n);
+            end
+            if frac_n_S_0 == 0
+                obj.n_S_0 = ceil(2/3*obj.n_C_0);
+            else
+                obj.n_S_0 = ceil(frac_n_S_0*obj.n_C_0);
+            end
+            if frac_n_S_1 == 0
+                obj.n_S_1 = ceil(2/3*obj.n_C_1);
+            else
+                obj.n_S_1 = ceil(frac_n_S_1*obj.n_C_1);
+            end
+
             obj.h_tan = 1/(obj.n-1);
             obj.h_norm = h_norm;
             
@@ -125,7 +141,7 @@ classdef Curve_obj < handle
                 
                 J = @(v) [dM_p_1_dxi(v(1), v(2)), dM_p_1_deta(v(1), v(2)); dM_p_2_dxi(v(1), v(2)), dM_p_2_deta(v(1), v(2))];
 
-                C_patch = C1_patch_obj(M_p, J, eps_xi_eta, eps_xy, obj.n_C_1*2+1, obj.next_curve.n_C_0*2+1, d, nan, nan);
+                C_patch = C1_patch_obj(M_p, J, eps_xi_eta, eps_xy, obj.n_C_1*2-1, obj.next_curve.n_C_0*2-1, d, nan, nan);
                 [X_L, Y_L] = C_patch.L.xy_mesh;
                 C_patch.L.f_XY = f(X_L, Y_L);
                 [X_W, Y_W] = C_patch.W.xy_mesh;

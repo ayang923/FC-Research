@@ -370,14 +370,14 @@ classdef Q_patch_obj < handle
 
             main_R_xi = main_xi_corner - obj.xi_start;
             main_xi_0 = obj.xi_start;
-            main_w = @(xi, eta) obj.phi_1D((xi-main_xi_0)/main_R_xi);
+            main_w = @(xi, eta) obj.w_1D((xi-main_xi_0)/main_R_xi);
             
             window_w = compute_w_normalization_window(obj, main_w, window_patch, window_xi_corner, false);
 
             [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_xi_overlap_mesh(obj, main_xi_corner, false);
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);                
             
-            w_unnormalized = main_w(main_XI, main_ETA);
+            w_unnormalized = main_w(XI_overlap, ETA_overlap);
             obj.apply_w(w_unnormalized, window_patch, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);        
         end
     
@@ -453,9 +453,9 @@ classdef Q_patch_obj < handle
                     [window_patch_xi, window_patch_eta, converged] = window_patch.inverse_M_p(overlap_X(i, j), overlap_Y(i, j), initial_guesses);
 
                     if converged
-                        xi_i = overlap_XI_j(i, j) + 1;
-                        xi_j = overlap_ETA_j(i, j) + 1;
-                        obj.f_XY(xi_j, xi_i) = obj.f_XY(xi_j, xi_i).*w_unnormalized(i, j) ./ (window_w(window_patch_xi, window_patch_eta)+w_unnormalized(i, j));
+                        xi_j = overlap_XI_j(i, j) + 1;
+                        eta_j = overlap_ETA_j(i, j) + 1;
+                        obj.f_XY(eta_j, xi_j) = obj.f_XY(eta_j, xi_j).*w_unnormalized(i, j) ./ (window_w(window_patch_xi, window_patch_eta)+w_unnormalized(i, j));
                     elseif ~converged
                         warning("Nonconvergence in computing C2_norm")
                     end
