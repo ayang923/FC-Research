@@ -13,24 +13,37 @@ classdef Curve_seq_obj
         function patches = construct_patches(obj, f, d, eps_xi_eta, eps_xy)
             curr = obj.first_curve;
             prev_S_patch = nan;
+            prev_C_patch = nan;
             patches = cell(obj.n_curves*2, 1);
+            
+            figure;
             for i = 1:obj.n_curves
                 S_patch = curr.construct_S_patch(f, d, eps_xi_eta, eps_xy);
                 C_patch = curr.construct_C_patch(f, d, eps_xi_eta, eps_xy);
                 
+                [X, Y] = S_patch.Q.xy_mesh;
+                scatter(X(:), Y(:));%,patches{2*i-1}.Q.f_XY(:));
+                hold on;
+                [X, Y] = C_patch.L.xy_mesh;
+                scatter(X(:), Y(:));%,patches{2*i}.L.f_XY);
+                [X, Y] = C_patch.W.xy_mesh;
+                scatter(X(:), Y(:));
+                
+
                 if i ~= 1
-                    C_patch.apply_w_L(prev_S_patch);
+                    prev_C_patch.apply_w_W(prev_S_patch)
+                    prev_C_patch.apply_w_L(S_patch)
                 end
-                C_patch.apply_w_W(S_patch);
                 
                 patches{2*i-1} = S_patch;
                 patches{2*i} = C_patch;
                 
                 prev_S_patch = S_patch;
+                prev_C_patch = C_patch;
                 curr = curr.next_curve;
             end
-            
-            C_patch.apply_w_L(prev_S_patch);
+            C_patch.apply_w_W(S_patch);
+            C_patch.apply_w_L(patches{1});
         end
         
         function [boundary_X, boundary_Y] = construct_boundary_mesh(obj, n_r)

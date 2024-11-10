@@ -59,7 +59,7 @@ classdef Curve_obj < handle
             obj.h_tan = 1/(obj.n-1);
             obj.h_norm = h_norm;
             
-            if isnan(next_curve)
+            if isempty(next_curve)
                 obj.next_curve = obj;
             else
                 obj.next_curve = next_curve;

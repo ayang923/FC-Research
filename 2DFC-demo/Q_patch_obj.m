@@ -455,7 +455,7 @@ classdef Q_patch_obj < handle
                     if converged
                         xi_j = overlap_XI_j(i, j) + 1;
                         eta_j = overlap_ETA_j(i, j) + 1;
-                        obj.f_XY(eta_j, xi_j) = obj.f_XY(eta_j, xi_j).*w_unnormalized(i, j) ./ (window_w(window_patch_xi, window_patch_eta)+w_unnormalized(i, j));
+                        obj.f_XY(eta_j, xi_j) = obj.f_XY(eta_j, xi_j) .* w_unnormalized(i, j) ./ (window_w(window_patch_xi, window_patch_eta)+w_unnormalized(i, j));
                     elseif ~converged
                         warning("Nonconvergence in computing C2_norm")
                     end
@@ -487,7 +487,7 @@ function [main_xi_corner] = compute_xi_corner(main_patch, window_patch, window_f
         else
             main_xi_corner = main_patch.xi_start;
         end
-
+        
         while true
             window_xy_edge = window_patch.M_p(window_xi_edge, window_eta_edge);
             [main_xi_edge, main_eta_edge, converged] = main_patch.inverse_M_p(window_xy_edge(1, 1), window_xy_edge(1, 2), nan);
@@ -495,11 +495,11 @@ function [main_xi_corner] = compute_xi_corner(main_patch, window_patch, window_f
                  warning("Nonconvergence in computing boundary mesh values");
                  break;
             end
-            if main_eta_edge > main_patch.eta_end || main_eta_edge < main_patch.eta_start
-                break;
-            end
             if (main_xi_edge < main_xi_corner && window_patch_right) || (main_xi_edge > main_xi_corner && ~window_patch_right)
                 main_xi_corner = main_xi_edge;
+            end
+            if main_eta_edge > main_patch.eta_end || main_eta_edge < main_patch.eta_start
+                break;
             end
             if window_fix_xi
                 window_eta_edge = window_eta_edge + h_eta_window;
@@ -552,11 +552,11 @@ function [main_eta_corner] = compute_eta_corner(main_patch, window_patch, window
                  warning("Nonconvergence in computing boundary mesh values");
                  break;
             end
-            if main_xi_edge > main_patch.xi_end || main_xi_edge < main_patch.xi_start
-                break;
-            end
             if (main_eta_edge < main_eta_corner && window_patch_up) || (main_eta_edge > main_eta_corner && ~window_patch_up)
                 main_eta_corner = main_eta_edge;
+            end
+            if main_xi_edge > main_patch.xi_end || main_xi_edge < main_patch.xi_start
+                break;
             end
             if window_fix_xi
                 window_eta_edge = window_eta_edge + h_eta_window;
