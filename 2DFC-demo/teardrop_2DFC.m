@@ -16,7 +16,7 @@ M = d+3;
 
 h = 0.005;
 
-n_frac_C = 1/3;
+n_frac_C = 1/10;
 
 if(exist(['FC_data/A_d',num2str(d),'_C', num2str(C), '_r', num2str(n_r), '.mat']) == 0 | ...
    exist(['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat']) == 0)
@@ -31,8 +31,8 @@ load(['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat']);
 A = double(A);
 Q = double(Q);
 
-curve_1 = Curve_obj(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, 0, n_frac_C, n_frac_C, 0, 0, h, nan);
-curve_seq = Curve_seq_obj(curve_1, 1);
+curve_seq = Curve_seq_obj();
+curve_seq.add_curve(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, 0, n_frac_C, n_frac_C, 0, 0, h);
 
 FC2D(f, h, curve_seq, 1e-13, 1e-13, d, C, n_r, A, Q, M);
 

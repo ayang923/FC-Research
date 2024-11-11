@@ -1,13 +1,26 @@
-classdef Curve_seq_obj
+classdef Curve_seq_obj < handle
     properties
         first_curve
+        last_curve
         n_curves
     end
     
     methods
-        function obj = Curve_seq_obj(first_curve, n_curves)
-            obj.first_curve = first_curve;
-            obj.n_curves = n_curves;
+        function obj = Curve_seq_obj()
+            obj.first_curve = [];
+            obj.last_curve = [];
+            obj.n_curves = 0;
+        end
+        
+        function add_curve(obj, l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, n, frac_n_C_0, frac_n_C_1, frac_n_S_0, frac_n_S_1, h_norm)
+            new_curve = Curve_obj(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, n, frac_n_C_0, frac_n_C_1, frac_n_S_0, frac_n_S_1, h_norm, obj.first_curve);
+            if isempty(obj.first_curve)
+                obj.first_curve = new_curve;
+                obj.last_curve = new_curve;
+            end
+            obj.last_curve.next_curve = new_curve;
+            
+            obj.n_curves = obj.n_curves+1;
         end
         
         function patches = construct_patches(obj, f, d, eps_xi_eta, eps_xy)

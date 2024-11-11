@@ -488,9 +488,16 @@ function [main_xi_corner] = compute_xi_corner(main_patch, window_patch, window_f
             main_xi_corner = main_patch.xi_start;
         end
         
+        first_iter = true;
         while true
             window_xy_edge = window_patch.M_p(window_xi_edge, window_eta_edge);
-            [main_xi_edge, main_eta_edge, converged] = main_patch.inverse_M_p(window_xy_edge(1, 1), window_xy_edge(1, 2), nan);
+            if first_iter
+                [main_xi_edge, main_eta_edge, converged] = main_patch.inverse_M_p(window_xy_edge(1, 1), window_xy_edge(1, 2), nan);
+            else
+                [main_xi_edge, main_eta_edge, converged] = main_patch.inverse_M_p(window_xy_edge(1, 1), window_xy_edge(1, 2), [main_xi_edge; main_eta_edge]);
+            end
+            first_iter = false;
+            
             if ~converged
                  warning("Nonconvergence in computing boundary mesh values");
                  break;
@@ -544,10 +551,17 @@ function [main_eta_corner] = compute_eta_corner(main_patch, window_patch, window
         else
             main_eta_corner = main_patch.eta_start;
         end
-
+        
+        first_iter = true;
         while true
             window_xy_edge = window_patch.M_p(window_xi_edge, window_eta_edge);
-            [main_xi_edge, main_eta_edge, converged] = main_patch.inverse_M_p(window_xy_edge(1, 1), window_xy_edge(1, 2), nan);
+            if first_iter
+                [main_xi_edge, main_eta_edge, converged] = main_patch.inverse_M_p(window_xy_edge(1, 1), window_xy_edge(1, 2), nan);
+            else
+                [main_xi_edge, main_eta_edge, converged] = main_patch.inverse_M_p(window_xy_edge(1, 1), window_xy_edge(1, 2), [main_xi_edge; main_eta_edge]);
+            end
+            
+            first_iter = false;
             if ~converged
                  warning("Nonconvergence in computing boundary mesh values");
                  break;
