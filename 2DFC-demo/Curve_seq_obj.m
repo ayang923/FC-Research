@@ -18,8 +18,9 @@ classdef Curve_seq_obj < handle
                 obj.first_curve = new_curve;
                 obj.last_curve = new_curve;
             end
-            obj.last_curve.next_curve = new_curve;
             
+            obj.last_curve.next_curve = new_curve;
+            obj.last_curve = new_curve;            
             obj.n_curves = obj.n_curves+1;
         end
         

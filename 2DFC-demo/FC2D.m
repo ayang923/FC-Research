@@ -1,4 +1,4 @@
-function [R] = FC2D(f, h, curve_seq, eps_xi_eta, eps_xy, d, C, n_r, A, Q, M)
+function [R, FC_patches] = FC2D(f, h, curve_seq, eps_xi_eta, eps_xy, d, C_S, n_r, A_S, Q_S, C_C, A_C, Q_C, M)
 %FC2D Summary of this function goes here
 %   Detailed explanation goes here
     patches = curve_seq.construct_patches(f, d, eps_xi_eta, eps_xy);
@@ -10,8 +10,8 @@ function [R] = FC2D(f, h, curve_seq, eps_xi_eta, eps_xy, d, C, n_r, A, Q, M)
     
     FC_patches = cell(4*curve_seq.n_curves, 1);
     for i = 1:curve_seq.n_curves
-        FC_patches{4*i-3} = patches{2*i-1}.FC(C, n_r, d, A, Q);
-        [FC_patches{4*i-2}, FC_patches{4*i-1}, FC_patches{4*i}] = patches{2*i}.FC(C, n_r, d, A, Q, M);
+        FC_patches{4*i-3} = patches{2*i-1}.FC(C_S, n_r, d, A_S, Q_S);
+        [FC_patches{4*i-2}, FC_patches{4*i-1}, FC_patches{4*i}] = patches{2*i}.FC(C_C, n_r, d, A_C, Q_C, M);
         for j = 0:3
             x_min = min(FC_patches{4*i-j}.x_min, x_min);
             x_max = max(FC_patches{4*i-j}.x_max, x_max);
