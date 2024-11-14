@@ -93,7 +93,7 @@ classdef Curve_obj < handle
             % compute angle between two curves to determine what type of
             % corner patch
             curr_v = [obj.l_1(1); obj.l_2(1)] - [obj.l_1(1-1/(obj.n-1)); obj.l_2(1-1/(obj.n-1))];
-            next_v = [obj.next_curve.l_1(1/(obj.n-1)); obj.next_curve.l_2(1/(obj.n-1))] - [obj.l_1(1); obj.l_2(1)];
+            next_v = [obj.next_curve.l_1(1/(obj.next_curve.n-1)); obj.next_curve.l_2(1/(obj.next_curve.n-1))] - [obj.l_1(1); obj.l_2(1)];
             
             % C2-type patch means cross product is positive
             if curr_v(1)*next_v(2) - curr_v(2)*next_v(1) >= 0
