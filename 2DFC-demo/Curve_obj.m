@@ -123,9 +123,9 @@ classdef Curve_obj < handle
                 C_patch.W.f_XY = f(X_W, Y_W);
             else
                 xi_diff = 2*(obj.n_C_1-1)*obj.h_tan;
-                eta_diff = -2*(obj.next_curve.n_C_0-1)*obj.h_tan;
+                eta_diff = -2*(obj.next_curve.n_C_0-1)*obj.next_curve.h_tan;
                 xi_0 = 1-(obj.n_C_1-1)*obj.h_tan;
-                eta_0 = (obj.n_C_0-1)*obj.h_tan;
+                eta_0 = (obj.n_C_0-1)*obj.next_curve.h_tan;
                 
                 xi_tilde = @(xi) xi_diff*xi + xi_0;
                 eta_tilde = @(eta) eta_diff*eta +eta_0;
