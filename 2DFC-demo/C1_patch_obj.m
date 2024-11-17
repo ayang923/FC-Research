@@ -74,7 +74,7 @@ classdef C1_patch_obj < handle
             C1_fcont_patch_L = Q_patch_obj(obj.L.M_p, obj.L.J, obj.L.eps_xi_eta, obj.L.eps_xy, C*n_r+1,  obj.L.n_eta - (d-1), 1/2-C*h_xi, 1/2, 0, 1/2, L_fcont(1:(obj.L.n_eta - (d-1)), :));
             
             if 1/2-C*h_xi < 0
-
+                error("Please refine mesh of C1 patch");
             else
                 [W_unrefined_f_XY, W_refined_f_XY] = obj.refine_W(W_f_XY, C, n_r, M);
                 W_minus_fcont = W_refined_f_XY - L_fcont(end-(d-1):end, :);

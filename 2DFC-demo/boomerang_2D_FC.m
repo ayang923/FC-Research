@@ -2,7 +2,7 @@ clc; clear; close all;
 
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 
-d = 7;
+d = 4;
 C = 27;
 n_r = 6;
 
@@ -36,4 +36,4 @@ curve_seq = Curve_seq_obj();
 
 curve_seq.add_curve(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, 0, 1/10, 1/10, 0, 0, h);
 
-FC2D(f, h, curve_seq, 1e-13, 1e-13, d, C, n_r, A, Q, M)
+[R, FC_patches] = FC2D(f, h, curve_seq, 1e-13, 1e-13, d, C, n_r, A, Q, C, A, Q, M)
