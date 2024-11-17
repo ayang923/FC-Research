@@ -2,9 +2,9 @@ clc; clear; close all;
 
 f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
 
-d = 7;
+d = 4;
 C_S = 27;
-C_C = 54;
+C_C = 27;
 n_r = 6;
 
 M = d+5;

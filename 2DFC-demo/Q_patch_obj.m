@@ -184,8 +184,8 @@ classdef Q_patch_obj < handle
                 h_eta = 0;
             end
 
-            boundary_mesh_xi = [ones(obj.n_eta+1, 1)*(obj.xi_start-h_xi); obj.xi_mesh(); ones(obj.n_eta+1, 1)*(obj.xi_end+h_xi); flip(obj.xi_mesh()); obj.xi_start-h_xi];
-            boundary_mesh_eta = [obj.eta_mesh(); ones(obj.n_xi+1, 1)*(obj.eta_end+h_eta); flip(obj.eta_mesh); ones(obj.n_xi+1, 1)*(obj.eta_start-h_eta); obj.eta_start];
+            boundary_mesh_xi = [ones(obj.n_eta, 1)*(obj.xi_start-h_xi); obj.xi_mesh(); ones(obj.n_eta, 1)*(obj.xi_end+h_xi); flip(obj.xi_mesh()); obj.xi_start-h_xi];
+            boundary_mesh_eta = [obj.eta_mesh(); ones(obj.n_xi, 1)*(obj.eta_end+h_eta); flip(obj.eta_mesh); ones(obj.n_xi, 1)*(obj.eta_start-h_eta); obj.eta_start-h_eta];
         end
         
         function [boundary_mesh_x, boundary_mesh_y] = boundary_mesh_xy(obj, pad_boundary)

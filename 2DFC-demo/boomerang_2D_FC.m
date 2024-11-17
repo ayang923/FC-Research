@@ -32,7 +32,8 @@ l_2_dprime = @(theta) -4*pi^2*beta*sin(theta*2*pi);
 
 h = 0.005;
 
-curve_1 = Curve_obj(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, 0, 1/10, 1/10, 0, 0, h, nan);
-curve_seq = Curve_seq_obj(curve_1, 1);
+curve_seq = Curve_seq_obj();
+
+curve_seq.add_curve(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, 0, 1/10, 1/10, 0, 0, h);
 
 FC2D(f, h, curve_seq, 1e-13, 1e-13, d, C, n_r, A, Q, M)

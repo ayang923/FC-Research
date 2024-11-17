@@ -67,7 +67,7 @@ classdef Curve_seq_obj < handle
                 n_points = n_points + (curr.n-1)*n_r + 1;
                 curr = curr.next_curve;
             end
-            
+                        
             boundary_X = zeros(n_points, 1);
             boundary_Y = zeros(n_points, 1);
             curr_idx = 1;
@@ -76,7 +76,8 @@ classdef Curve_seq_obj < handle
                 boundary_X(curr_idx:curr_idx+(curr.n-1)*n_r) = curr.l_1(linspace(0, 1, (curr.n-1)*n_r + 1)');
                 boundary_Y(curr_idx:curr_idx+(curr.n-1)*n_r) = curr.l_2(linspace(0, 1, (curr.n-1)*n_r + 1)');
                 
-                curr = curr.next_curve;
+                curr_idx = curr_idx + (curr.n-1)*n_r + 1;
+                curr = curr.next_curve;                
             end
         end
     end

@@ -9,7 +9,7 @@ l_2_prime = @(theta) -2*pi*cos(theta*2*pi);
 l_1_dprime = @(theta) -2*pi^2*sin(theta*pi);
 l_2_dprime = @(theta) 4*pi^2*sin(theta*2*pi);
 
-d = 7;
+d = 4;
 C = 27;
 n_r = 6;
 M = d+3;
@@ -34,5 +34,5 @@ Q = double(Q);
 curve_seq = Curve_seq_obj();
 curve_seq.add_curve(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, 0, n_frac_C, n_frac_C, 0, 0, h);
 
-FC2D(f, h, curve_seq, 1e-13, 1e-13, d, C, n_r, A, Q, M);
+R = FC2D(f, h, curve_seq, 1e-13, 1e-13, d, C, n_r, A, Q, C, A, Q, M);
 

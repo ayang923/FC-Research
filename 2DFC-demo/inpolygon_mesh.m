@@ -32,11 +32,10 @@ function [in] = inpolygon_mesh(R_X, R_Y, boundary_x, boundary_y)
         
         intersection_mesh_y = ((min(y_edge_1_j, y_edge_2_j)+1):max(y_edge_1_j, y_edge_2_j))*h_y+y_start;
         intersection_x = x_edge_1 + (x_edge_2-x_edge_1).*(intersection_mesh_y-y_edge_1)./(y_edge_2-y_edge_1);
-        
+
         mesh_intersection_idxs = sub2ind(size(in), round((intersection_mesh_y-y_start)/h_y)+1, floor((intersection_x-x_start)/h_x)+1);
         in(mesh_intersection_idxs) = ~in(mesh_intersection_idxs);
     end
-        
     for vert_idx = 1:size(in, 1)
         in_interior = false;
         for horz_idx = 1:size(in, 2)
