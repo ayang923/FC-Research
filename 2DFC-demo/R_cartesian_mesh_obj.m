@@ -125,6 +125,7 @@ classdef R_cartesian_mesh_obj < handle
             [bound_X, bound_Y] = patch.boundary_mesh_xy(false);
             in_patch = inpolygon_mesh(obj.R_X, obj.R_Y, bound_X, bound_Y) & ~obj.in_interior;
             R_patch_idxs = obj.R_idxs(in_patch);
+            in_patch = double(in_patch);
 
             % computing initial "proximity map" with floor and ceil
             % operator
@@ -136,12 +137,20 @@ classdef R_cartesian_mesh_obj < handle
             floor_Y_j = floor((patch_Y-obj.y_start)/obj.h);
             ceil_Y_j = ceil((patch_Y-obj.y_start)/obj.h);
             
+            n_in_patch = sum(in_patch, 'all');            
+            P_xi = zeros(n_in_patch, 1);
+            P_eta = zeros(n_in_patch, 1);
+            
             P = containers.Map('KeyType', 'int32', 'ValueType', 'any');
             for i = 1:length(R_patch_idxs)
+                P_xi(i) = nan; P_eta(i) = nan;
+                in_patch(R_patch_idxs(i)) = i;
                 P(R_patch_idxs(i)) = nan;
             end
+            
 
             disp("start first pass");
+            tic;
             for i = 1:size(patch_X, 1)
                 for j = 1:size(patch_X, 2)
                     neighbors = [floor_X_j(i, j), floor_X_j(i, j), ceil_X_j(i, j), ceil_X_j(i, j); floor_Y_j(i, j), ceil_Y_j(i, j), floor_Y_j(i, j), ceil_Y_j(i, j)];
@@ -153,49 +162,48 @@ classdef R_cartesian_mesh_obj < handle
                         end
                         patch_idx = sub2ind([obj.n_y, obj.n_x], neighbor(2), neighbor(1));
                         
-                        if isKey(P, patch_idx)
-                            if isnan(P(patch_idx))
-                                [xi, eta, converged] = patch.inverse_M_p((neighbor(1)-1)*obj.h + obj.x_start, (neighbor(2)-1)*obj.h + obj.y_start, [XI(i, j); ETA(i, j)]);
-                                if converged
-                                    P(patch_idx) = [xi; eta];
-                                else
-                                    warning("Nonconvergence in interpolation")
-                                end
+                        if (in_patch(patch_idx) ~= 0) && isnan(P_xi(in_patch(patch_idx)))
+                            [xi, eta, converged] = patch.inverse_M_p((neighbor(1)-1)*obj.h + obj.x_start, (neighbor(2)-1)*obj.h + obj.y_start, [XI(i, j); ETA(i, j)]);
+                            if converged
+                                P_xi(in_patch(patch_idx)) = xi;
+                                P_eta(in_patch(patch_idx)) = eta;
+                            else
+                                warning("Nonconvergence in interpolation")
                             end
                         end
                     end
                 end
             end
-            
+            toc
             disp("construct nan map")
             
             % second pass for points that aren't touched, could
             % theoretically modify so that we continuously do this until
             % all points are touched
             
-            nan_set = containers.Map('KeyType', 'int32', 'ValueType', 'logical');
+            nan_set = containers.Map('KeyType', 'int64', 'ValueType', 'logical');
             % first iterate through and construct nan set            
-            for key = keys(P)
-                if isnan(P(key{1}))
-                    nan_set(key{1}) = true;
+            for i=1:length(P_xi)
+                if isnan(P_xi(i))
+                    nan_set(i) = true;
                 end
             end
                         
             % pass through nan set until empty
             while nan_set.Count > 0
                 for key = keys(nan_set)
-                    [i, j] = ind2sub([obj.n_y, obj.n_x], key{1});
+                    [i, j] = ind2sub([obj.n_y, obj.n_x], R_patch_idxs(key{1}));
                     
                     neighbor_shifts = [1 -1 0 0 1 1 -1 -1; 0 0 -1 1 1 -1 1 -1];
                     is_touched = false;
                     for neighbor_shift_i = 1:size(neighbor_shifts, 2)
                         neighbor_shift = neighbor_shifts(:, neighbor_shift_i);
                         neighbor = sub2ind([obj.n_y, obj.n_x], i+ neighbor_shift(1), j + neighbor_shift(2));
-
-                        if isKey(P, neighbor) && ~any(isnan(P(neighbor)))
-                            [xi, eta, converged] = patch.inverse_M_p((j-1)*obj.h+obj.x_start, (i-1)*obj.h+obj.y_start, P(neighbor));
+                        
+                        if (in_patch(neighbor) ~= 0) && ~isnan(P_xi(in_patch(neighbor)))
+                            [xi, eta, converged] = patch.inverse_M_p((j-1)*obj.h+obj.x_start, (i-1)*obj.h+obj.y_start, [P_xi(in_patch(neighbor)); P_eta(in_patch(neighbor))]);
                             if converged
-                                P(key{1}) = [xi; eta];
+                                P_xi(key{1}) = xi; P_eta(key{1}) = eta;
                                 is_touched = true;
                                 break;
                             else
@@ -211,8 +219,7 @@ classdef R_cartesian_mesh_obj < handle
                         
             f_R_patch = zeros(size(R_patch_idxs));
             for i = 1:length(R_patch_idxs)
-                xi_eta_point = P(R_patch_idxs(i));
-                [interior_val, in_range] = patch.locally_compute(xi_eta_point(1), xi_eta_point(2), M);
+                [interior_val, in_range] = patch.locally_compute(P_xi(i), P_eta(i), M);
                 if in_range
                      f_R_patch(i) = interior_val;                    
                 end
