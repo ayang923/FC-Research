@@ -23,6 +23,10 @@ classdef S_patch_obj < handle
             obj.h = h;
         end
         
+        function S_patch_copy = copy_patch(obj)
+            S_patch_copy = S_patch_obj(obj.M_p_general, obj.J_general, obj.h, obj.Q.eps_xi_eta, obj.Q.eps_xy, obj.Q.n_xi, obj.Q.n_eta, obj.Q.f_XY);
+        end
+        
         function S_fcont_patch = FC(obj, C, n_r, d, A, Q)
             h_eta = (obj.Q.eta_end-obj.Q.eta_start)/(obj.Q.n_eta-1);
             fcont = fcont_gram_blend_S(obj.Q.f_XY, d, A, Q);

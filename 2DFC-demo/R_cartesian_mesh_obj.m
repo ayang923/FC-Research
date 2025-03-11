@@ -254,6 +254,87 @@ classdef R_cartesian_mesh_obj < handle
             idxs = reshape(1:numel(R_X_err), size(R_X_err));
             interior_idx = idxs(inpolygon_mesh(R_X_err, R_Y_err, obj.boundary_X, obj.boundary_Y));
         end
+        
+        function [grad_X, grad_Y] = grad(obj, f_mesh)
+            if mod(obj.n_x, 2) == 0
+                kx = (2*pi./(obj.x_end-obj.x_start+obj.h)).*(-obj.n_x/2:(obj. n_x/2-1));
+            else
+                kx =  (2*pi/(obj.x_end-obj.x_start+obj.h)).*((-(obj.n_x-1)/2):((obj.n_x-1)/2));
+            end
+            
+            if mod(obj.n_y, 2) == 0
+                ky = (2*pi/(obj.y_end-obj.y_start+obj.h)).*(-obj.n_y/2:(obj. n_y/2-1));
+            else
+                
+                ky = (2*pi/(obj.y_end-obj.y_start+obj.h)).*((-(obj.n_y-1)/2):((obj.n_y-1)/2));
+            end
+            
+            % Create 2D mesh for wavenumbers
+            [KX, KY] = meshgrid(kx, ky);
+            
+            fft_coeffs = fftshift(fft2(f_mesh) / numel(obj.f_R));
+
+            % Compute spectral derivatives
+            f_hat_x = 1i * KX .* fft_coeffs;  % Fourier transform of ∂f/∂x
+            f_hat_y = 1i * KY .* fft_coeffs;  % Fourier transform of ∂f/∂y
+
+            % Transform back to real space
+            grad_X = numel(obj.f_R)*real(ifft2(ifftshift(f_hat_x)));
+            grad_Y = numel(obj.f_R)*real(ifft2(ifftshift(f_hat_y)));
+        end
+        
+       function [f_div] = div(obj, f_1_mesh, f_2_mesh)
+            if mod(obj.n_x, 2) == 0
+                kx = (2*pi./(obj.x_end-obj.x_start+obj.h)).*(-obj.n_x/2:(obj. n_x/2-1));
+            else
+                kx =  (2*pi/(obj.x_end-obj.x_start+obj.h)).*((-(obj.n_x-1)/2):((obj.n_x-1)/2));
+            end
+            
+            if mod(obj.n_y, 2) == 0
+                ky = (2*pi/(obj.y_end-obj.y_start+obj.h)).*(-obj.n_y/2:(obj. n_y/2-1));
+            else
+                
+                ky = (2*pi/(obj.y_end-obj.y_start+obj.h)).*((-(obj.n_y-1)/2):((obj.n_y-1)/2));
+            end
+            
+            % Create 2D mesh for wavenumbers
+            [KX, KY] = meshgrid(kx, ky);
+            
+            fft_coeffs_1 = fftshift(fft2(f_1_mesh) / numel(obj.f_R));
+            fft_coeffs_2 = fftshift(fft2(f_2_mesh) / numel(obj.f_R));
+
+            % Compute spectral derivatives
+            f_hat = 1i* KX .* fft_coeffs_1 + 1i * KY .* fft_coeffs_2;  % Fourier transform of ∂f/∂x
+
+            % Transform back to real space
+            f_div = numel(obj.f_R)*real(ifft2(ifftshift(f_hat)));
+       end
+        
+      function [f_lap] = lap(obj, f_mesh)
+            if mod(obj.n_x, 2) == 0
+                kx = (2*pi./(obj.x_end-obj.x_start+obj.h)).*(-obj.n_x/2:(obj. n_x/2-1));
+            else
+                kx =  (2*pi/(obj.x_end-obj.x_start+obj.h)).*((-(obj.n_x-1)/2):((obj.n_x-1)/2));
+            end
+            
+            if mod(obj.n_y, 2) == 0
+                ky = (2*pi/(obj.y_end-obj.y_start+obj.h)).*(-obj.n_y/2:(obj. n_y/2-1));
+            else
+                
+                ky = (2*pi/(obj.y_end-obj.y_start+obj.h)).*((-(obj.n_y-1)/2):((obj.n_y-1)/2));
+            end
+            
+            % Create 2D mesh for wavenumbers
+            [KX, KY] = meshgrid(kx, ky);
+            
+            fft_coeffs = fftshift(fft2(f_mesh) / numel(obj.f_R));
+
+            % Compute spectral derivatives
+            f_hat = -1* (KX.^2 + KY.^2).* fft_coeffs;
+
+            % Transform back to real space
+            f_lap = numel(obj.f_R)*real(ifft2(ifftshift(f_hat)));
+       end
     end
 end
 

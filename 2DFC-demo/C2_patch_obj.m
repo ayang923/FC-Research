@@ -31,6 +31,13 @@ classdef C2_patch_obj < handle
             obj.W = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi, d, 0, 1, 0, (d-1)*h_eta, f_W);            
             obj.L = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, d, n_eta-d+1, 0, (d-1)*h_xi, (d-1)*h_eta, 1, f_L);
         end
+        
+        function C2_patch_copy = copy_patch(obj)
+            d = obj.L.n_xi;
+            n_xi = obj.W.n_xi;
+            n_eta = obj.L.n_eta+d-1;
+            C2_patch_copy = C2_patch_obj(obj.L.M_p, obj.L.J, obj.L.eps_xi_eta, obj.L.eps_xy, n_xi, n_eta, d, obj.L.f_XY, obj.W.f_XY);
+        end
                 
         function [C2_fcont_patch_L, C2_fcont_patch_W, C2_fcont_patch_corner] = FC(obj, C, n_r, d, A, Q, M)
             % FC Computes the blending-to-zero extension values for this

@@ -35,6 +35,13 @@ classdef C1_patch_obj < handle
             obj.W = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, (n_xi+1)/2, d, 0, 1/2, 1/2, 1/2+(d-1)*h_eta, f_W);
         end
         
+        function C2_patch_copy = copy_patch(obj)
+            d = obj.L.n_xi;
+            n_xi = obj.W.n_xi*2-1;
+            n_eta = (obj.L.n_eta-(d-1))*2-1;
+            C2_patch_copy = C2_patch_obj(obj.L.M_p, obj.L.J, obj.L.eps_xi_eta, obj.L.eps_xy, n_xi, n_eta, d, obj.L.f_XY, obj.W.f_XY);
+        end
+        
         function  [C1_fcont_patch_L, C1_fcont_patch_W_refined, C1_fcont_patch_W_unrefined] = FC(obj, C, n_r, d, A, Q, M)
             % FC Computes the blending-to-zero extension values for this
             % patch and returns them as three Q-patch type objects
@@ -86,6 +93,8 @@ classdef C1_patch_obj < handle
                 C1_fcont_patch_W_unrefined = Q_patch_obj(obj.W.M_p, obj.W.J, obj.W.eps_xi_eta, obj.W.eps_xy, obj.W.n_xi-C, C*n_r+1, 0, 1/2-C*h_xi, 1/2-C*h_eta, 1/2, W_fcont_unrefined);
             end
         end
+        
+        
         
         function [W_unrefined_f_XY, W_refined_f_XY] = refine_W(obj, W_f_XY, C, n_r, M)
             % refine_W refines W for use in FC using polynomial
