@@ -2,6 +2,6 @@
 *.zip
 *.icloud
 *~
-.DS_Store
+*.DS_Store
 #*#
 *.asv
