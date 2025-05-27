@@ -2,3 +2,5 @@
 *.zip
 *.icloud
 *~
+.DS_Store
+#*#
