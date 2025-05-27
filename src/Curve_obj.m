@@ -73,18 +73,18 @@ classdef Curve_obj < handle
             
             nu_norm = @(theta) sqrt(obj.l_1_prime(theta).^2 + obj.l_2_prime(theta).^2);
             
-            M_p_1_general = @(xi, eta, H) obj.l_1(xi_tilde(xi)) - eta.*H.*obj.l_2_prime(xi_tilde(xi))./nu_norm(xi_tilde(xi));
-            M_p_2_general = @(xi, eta, H) obj.l_2(xi_tilde(xi)) + eta.*H.*obj.l_1_prime(xi_tilde(xi))./nu_norm(xi_tilde(xi));
-            M_p_general = @(xi, eta, H) [M_p_1_general(xi, eta, H), M_p_2_general(xi, eta, H)];
+            M_p_1 = @(xi, eta) obj.l_1(xi_tilde(xi)) - eta.*obj.l_2_prime(xi_tilde(xi))./nu_norm(xi_tilde(xi));
+            M_p_2 = @(xi, eta) obj.l_2(xi_tilde(xi)) + eta.*obj.l_1_prime(xi_tilde(xi))./nu_norm(xi_tilde(xi));
+            M_p = @(xi, eta) [M_p_1(xi, eta), M_p_2(xi, eta)];
             
-            dM_p_1_dxi = @(xi, eta, H) xi_diff * (obj.l_1_prime(xi_tilde(xi))-eta*H*(obj.l_2_dprime(xi_tilde(xi)).*nu_norm(xi_tilde(xi)).^2-obj.l_2_prime(xi_tilde(xi)).*(obj.l_2_dprime(xi_tilde(xi)).*obj.l_2_prime(xi_tilde(xi))+obj.l_1_dprime(xi_tilde(xi)).*obj.l_1_prime(xi_tilde(xi))))./nu_norm(xi_tilde(xi)).^3);
-            dM_p_2_dxi = @(xi, eta, H) xi_diff * (obj.l_2_prime(xi_tilde(xi))+eta*H*(obj.l_1_dprime(xi_tilde(xi)).*nu_norm(xi_tilde(xi)).^2-obj.l_1_prime(xi_tilde(xi)).*(obj.l_2_dprime(xi_tilde(xi)).*obj.l_2_prime(xi_tilde(xi))+obj.l_1_dprime(xi_tilde(xi)).*obj.l_1_prime(xi_tilde(xi))))./nu_norm(xi_tilde(xi)).^3);
-            dM_p_1_deta = @(xi, eta, H) -H*obj.l_2_prime(xi_tilde(xi)) ./ nu_norm(xi_tilde(xi));
-            dM_p_2_deta = @(xi, eta, H) H*obj.l_1_prime(xi_tilde(xi)) ./ nu_norm(xi_tilde(xi));
+            dM_p_1_dxi = @(xi, eta) xi_diff * (obj.l_1_prime(xi_tilde(xi))-eta*(obj.l_2_dprime(xi_tilde(xi)).*nu_norm(xi_tilde(xi)).^2-obj.l_2_prime(xi_tilde(xi)).*(obj.l_2_dprime(xi_tilde(xi)).*obj.l_2_prime(xi_tilde(xi))+obj.l_1_dprime(xi_tilde(xi)).*obj.l_1_prime(xi_tilde(xi))))./nu_norm(xi_tilde(xi)).^3);
+            dM_p_2_dxi = @(xi, eta) xi_diff * (obj.l_2_prime(xi_tilde(xi))+eta*(obj.l_1_dprime(xi_tilde(xi)).*nu_norm(xi_tilde(xi)).^2-obj.l_1_prime(xi_tilde(xi)).*(obj.l_2_dprime(xi_tilde(xi)).*obj.l_2_prime(xi_tilde(xi))+obj.l_1_dprime(xi_tilde(xi)).*obj.l_1_prime(xi_tilde(xi))))./nu_norm(xi_tilde(xi)).^3);
+            dM_p_1_deta = @(xi, eta) -obj.l_2_prime(xi_tilde(xi)) ./ nu_norm(xi_tilde(xi));
+            dM_p_2_deta = @(xi, eta) obj.l_1_prime(xi_tilde(xi)) ./ nu_norm(xi_tilde(xi));
             
-            J_general = @(v, H) [dM_p_1_dxi(v(1), v(2), H), dM_p_1_deta(v(1), v(2), H); dM_p_2_dxi(v(1), v(2), H), dM_p_2_deta(v(1), v(2), H)];
+            J = @(v) [dM_p_1_dxi(v(1), v(2)), dM_p_1_deta(v(1), v(2)); dM_p_2_dxi(v(1), v(2)), dM_p_2_deta(v(1), v(2))];
             
-            S_patch = S_patch_obj(M_p_general, J_general, obj.h_norm, eps_xi_eta, eps_xy, obj.n-(obj.n_C_1-obj.n_S_1)-(obj.n_C_0-obj.n_S_0), d, nan);
+            S_patch = S_patch_obj(M_p, J, obj.h_norm, eps_xi_eta, eps_xy, obj.n-(obj.n_C_1-obj.n_S_1)-(obj.n_C_0-obj.n_S_0), d, nan);
             [X, Y] = S_patch.Q.xy_mesh;
             S_patch.Q.f_XY = f(X, Y);
         end

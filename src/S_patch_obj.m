@@ -4,27 +4,20 @@ classdef S_patch_obj < handle
     
     properties
         Q
-        M_p_general % function handle of M_p with H as a parameter
-        J_general
         h
     end
     
     methods
-        function obj = S_patch_obj(M_p_general, J_general, h, eps_xi_eta, eps_xy, n_xi, d, f_XY)
+        function obj = S_patch_obj(M_p, J, h, eps_xi_eta, eps_xy, n_xi, d, f_XY)
             %S_PATCH_OBJ Construct an instance of this class
-            %   Detailed explanation goes here
-            h_eta = 1/(d-1);
-            H = h / h_eta;
+            %   Detailed explanation goes here            
+            obj.Q = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi, d, 0, 1, 0, h*(d-1), f_XY);
             
-            obj.Q = Q_patch_obj(@(xi, eta) M_p_general(xi, eta, H), @(v) J_general(v, H), eps_xi_eta, eps_xy, n_xi, d, 0, 1, 0, 1, f_XY);
-            
-            obj.M_p_general = M_p_general;
-            obj.J_general = J_general;
             obj.h = h;
         end
         
         function S_patch_copy = copy_patch(obj)
-            S_patch_copy = S_patch_obj(obj.M_p_general, obj.J_general, obj.h, obj.Q.eps_xi_eta, obj.Q.eps_xy, obj.Q.n_xi, obj.Q.n_eta, obj.Q.f_XY);
+            S_patch_copy = S_patch_obj(obj.Q.M_p, obj.Q.J, obj.h, obj.Q.eps_xi_eta, obj.Q.eps_xy, obj.Q.n_xi, obj.Q.n_eta, obj.Q.f_XY);
         end
         
         function S_fcont_patch = FC(obj, C, n_r, d, A, Q)
