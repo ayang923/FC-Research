@@ -1,5 +1,5 @@
 clc; clear; close all;
-load('geo_data_poly.mat')
+load('geo_data_teardrop.mat')
 
 p = 2;
 f = @(x, y) x.^2 - y.^2;
@@ -26,18 +26,25 @@ end
 
 u_num = @(x, y) u_num_global(x, y, gr_phi, curve_seq, start_idx, end_idx, curve_n, w);
 
-% M = 7;
-
-R = 2;
+R_fac = 2;
 fft_coeffs = fftshift(fft(gr_phi))/n_total;
-padded_fft_coeffs = [zeros(floor((n_total*R-n_total)/2), 1); fft_coeffs; zeros(ceil((n_total*R-n_total)/2), 1)];
-gr_phi_R = R*n_total*real(ifft(ifftshift(padded_fft_coeffs)));
+padded_fft_coeffs = [zeros(floor((n_total*R_fac-n_total)/2), 1); fft_coeffs; zeros(ceil((n_total*R_fac-n_total)/2), 1)];
+gr_phi_R = R_fac*n_total*real(ifft(ifftshift(padded_fft_coeffs)));
 
-[A_R, b_R] = construct_A_b(R, f, curve_seq, w, w_prime);
-u_num_b(1, 10, gr_phi, curve_seq, start_idx, end_idx, curve_n, w)
+[n_total_R, curve_n_R, start_idx_R, end_idx_R] = compute_curve_param(2, curve_seq);
+u_num_R = @(x, y) u_num_global(x, y, gr_phi_R, curve_seq, start_idx_R, end_idx_R, curve_n_R, w);
 
+u_numeric_mat = zeros(R.n_y, R.n_x);
+u_numeric_mat_R = zeros(R.n_y, R.n_x);
+for idx = R.interior_idxs'
+    u_numeric_mat(idx) = u_num(R.R_X(idx), R.R_Y(idx));
+    u_numeric_mat_R(idx) = u_num_R(R.R_X(idx), R.R_Y(idx));
+end
 
-function [A, b, n_total, curve_n, start_idx, end_idx] = construct_A_b(R, f, curve_seq, w, w_prime)
+u_numeric_mat(~R.in_interior) = nan;
+u_numeric_mat_R(~R.in_interior) = nan;
+
+function [n_total, curve_n, start_idx, end_idx] = compute_curve_param(R, curve_seq)
     curve_n = zeros(curve_seq.n_curves, 1);
     curr = curve_seq.first_curve;
     for i = 1:curve_seq.n_curves
@@ -48,6 +55,10 @@ function [A, b, n_total, curve_n, start_idx, end_idx] = construct_A_b(R, f, curv
     n_total = sum(curve_n);
     start_idx = cumsum([1, curve_n(1:end-1)'])';
     end_idx = start_idx+curve_n-1;
+end
+
+function [A, b, n_total, curve_n, start_idx, end_idx] = construct_A_b(R, f, curve_seq, w, w_prime)
+    [n_total, curve_n, start_idx, end_idx] = compute_curve_param(R, curve_seq);
 
     K_boundary = @(theta_1, theta_2, curve_1, curve_2) ...
         -1 / (2 * pi) * ( ...
@@ -103,7 +114,7 @@ function [A, b, n_total, curve_n, start_idx, end_idx] = construct_A_b(R, f, curv
     end
 end
 
-function u_num_b = u_num_b(curve_idx, s_idx, gr_phi, curve_seq, start_idx, end_idx, curve_n, w)
+function u_num_b = u_num_b(curve_idx, s_idx, gr_phi, curve_seq, start_idx, end_idx, curve_n, w, w_prime)
      K_boundary = @(theta_1, theta_2, curve_1, curve_2) ...
         -1 / (2 * pi) * ( ...
             (curve_1.l_1(theta_1) - curve_2.l_1(theta_2)) .* curve_2.l_2_prime(theta_2) - ...
@@ -129,6 +140,8 @@ function u_num_b = u_num_b(curve_idx, s_idx, gr_phi, curve_seq, start_idx, end_i
     for i = 1:size(start_idx)
         if i == curve_idx
             compute_curve = curr;
+            compute_s = (s_idx-1)/curve_n(i);
+            compute_theta = w(compute_s);
             break;
         end
         curr = curr.next_curve;
@@ -141,12 +154,14 @@ function u_num_b = u_num_b(curve_idx, s_idx, gr_phi, curve_seq, start_idx, end_i
         s_mesh = linspace(0, 1-ds, curve_n(i))';
         theta_mesh = w(s_mesh);
 
-        int_vec = transpose(K_boundary(w(s_mesh(s_idx)), theta_mesh, compute_curve, curr).*gr_phi(start_idx(i):end_idx(i)).*sqrt(curr.l_1_prime(theta_mesh).^2+curr.l_2_prime(theta_mesh).^2))* ds;
+        int_vec =  K_boundary(compute_theta, theta_mesh, compute_curve, curr).*sqrt(curr.l_1_prime(theta_mesh).^2+curr.l_2_prime(theta_mesh).^2)*ds;
+        
         if curve_idx == i
-            int_vec(s_idx) = K_boundary_same_point(w(s_mesh(s_idx)), curr);
+            int_vec(s_idx) = K_boundary_same_point(compute_theta, compute_curve).*sqrt(compute_curve.l_1_prime(compute_theta).^2+compute_curve.l_2_prime(compute_theta).^2)*ds;
+            u_num_b = u_num_b + 1/2*gr_phi(start_idx(curve_idx)+s_idx-1)./w_prime(compute_s);
         end
 
-        u_num_b = u_num_b + int_vec * ones(curve_n(i), 1);
+        u_num_b = u_num_b + int_vec' * gr_phi(start_idx(i):end_idx(i));
         curr = curr.next_curve;
     end
 end
