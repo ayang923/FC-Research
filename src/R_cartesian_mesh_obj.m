@@ -53,12 +53,6 @@
 %       normalization values where window patch is below the main patch
 %
 %
-%   Note the compute_w_normalization functions operate on this
-%   assumptions about the window patches:
-%       - the window patch is parametrized such that the "bounding" edge of
-%       the window patch (edge of window patch that is"contained" within
-%       main patch) corresponds to eta-axis in the window patch's parameter
-%       space
 %
 % Author: Allen Yang
 % Email: aryang@caltech.edu
@@ -141,6 +135,47 @@ classdef R_cartesian_mesh_obj < handle
         function fill_interior(obj, f)
         % fills interior of function
             obj.f_R(obj.interior_idxs) = f(obj.R_X(obj.interior_idxs), obj.R_Y(obj.interior_idxs));        
+        end
+        
+        function [f_xy, in_range] = locally_compute(obj, x, y, M)
+            
+            if x >= obj.x_end || x <= obj.x_start || y >= obj.y_end || y <=obj.y_start
+                f_xy = nan;
+                in_range = false;
+                disp('issue');
+                return
+            end
+            
+            in_range = true;
+           
+            % j to the immediate left of point
+            x_j = floor((x-obj.x_start)/obj.h);
+            y_j = floor((y-obj.y_start)/obj.h);
+            
+            half_M =  floor(M/2);
+            if mod(M, 2) ~= 0
+                interpol_x_j_mesh = transpose(x_j-half_M:x_j+half_M);
+                interpol_y_j_mesh = transpose(y_j-half_M:y_j+half_M);
+            else
+                interpol_x_j_mesh = transpose(x_j-half_M+1:x_j+half_M);
+                interpol_y_j_mesh = transpose(y_j-half_M+1:y_j+half_M);
+            end
+
+            interpol_x_j_mesh = shift_idx_mesh(interpol_x_j_mesh, 0, obj.n_x-1);
+            interpol_y_j_mesh = shift_idx_mesh(interpol_y_j_mesh, 0, obj.n_y-1);
+            
+            interpol_x_mesh = obj.h*interpol_x_j_mesh + obj.x_start;
+            interpol_y_mesh = obj.h*interpol_y_j_mesh + obj.y_start;
+            
+            % first 1D interpolation
+            interpol_x_exact = zeros(M, 1);
+            for horz_idx = 1:M
+                mu = [mean(interpol_x_mesh), std(interpol_x_mesh)];
+                interpol_val = obj.f_R(interpol_y_j_mesh(horz_idx)+1, interpol_x_j_mesh+1)';
+                interpol_x_exact(horz_idx) = barylag([(interpol_x_mesh-mu(1))/mu(2), interpol_val], (x-mu(1))/mu(2));
+            end
+             % second 1D interpolation
+            f_xy = barylag([interpol_y_mesh, interpol_x_exact], y);
         end
         
         function compute_fc_coeffs(obj)
