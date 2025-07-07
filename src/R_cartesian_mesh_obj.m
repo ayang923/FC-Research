@@ -292,7 +292,6 @@ classdef R_cartesian_mesh_obj < handle
             if mod(obj.n_y, 2) == 0
                 ky = (2*pi/(obj.y_end-obj.y_start+obj.h)).*(-obj.n_y/2:(obj. n_y/2-1));
             else
-                
                 ky = (2*pi/(obj.y_end-obj.y_start+obj.h)).*((-(obj.n_y-1)/2):((obj.n_y-1)/2));
             end
             
@@ -304,6 +303,27 @@ classdef R_cartesian_mesh_obj < handle
 
             % Transform back to real space
             f_lap = numel(obj.f_R)*real(ifft2(ifftshift(f_hat)));
+       end
+       
+       function [f_inv_lap] = inv_lap(obj)
+           if mod(obj.n_x, 2) == 0
+                kx = (2*pi./(obj.x_end-obj.x_start+obj.h)).*(-obj.n_x/2:(obj. n_x/2-1));
+            else
+                kx =  (2*pi/(obj.x_end-obj.x_start+obj.h)).*((-(obj.n_x-1)/2):((obj.n_x-1)/2));
+            end
+            
+            if mod(obj.n_y, 2) == 0
+                ky = (2*pi/(obj.y_end-obj.y_start+obj.h)).*(-obj.n_y/2:(obj. n_y/2-1));
+            else
+                ky = (2*pi/(obj.y_end-obj.y_start+obj.h)).*((-(obj.n_y-1)/2):((obj.n_y-1)/2));
+            end
+            
+            % Create 2D mesh for wavenumbers
+            [KX, KY] = meshgrid(kx, ky);
+            fc_coeffs_modified = ifftshift(obj.fc_coeffs); fc_coeff_0_0 = fc_coeffs_modified(1, 1); 
+            fc_coeffs_modified = -fc_coeffs_modified./(ifftshift(KX.^2) + ifftshift(KY.^2));
+            fc_coeffs_modified(1, 1) = 0; 
+            f_inv_lap = numel(obj.f_R)*ifft2(fc_coeffs_modified) + fc_coeff_0_0*(obj.R_X.^2+obj.R_Y.^2)/4;
        end
        
        function filter = fft_filter(obj)
