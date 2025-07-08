@@ -70,14 +70,10 @@ function [u_num_mat] = laplace_solver(R, curve_seq, u_G, G_cf, p, M, int_eps)
 
     disp("started Gauss-Konrod");
     
-    x_idx = 135; y_idx = 79;
-    x = R.R_X(y_idx, x_idx); y = R.R_Y(y_idx, x_idx);
-    u_num_near_boundary_global(x, y, gr_phi_coarse, curve_seq_coarse, start_idx, end_idx, curve_n, w, int_eps)
-    
     % Gauss-Konrod quadrature for points only in C type patches
     C_nS_idxs = R.R_idxs(in_C_patch_global & ~ in_S_patch_global);
     for idx = C_nS_idxs'
-        u_num_mat(idx) = u_num_near_boundary_global(R.R_X(idx), R.R_Y(idx), gr_phi_coarse, curve_seq_coarse, start_idx, end_idx, curve_n, w, int_eps);
+        u_num_mat(idx) = u_num_near_boundary_global(R.R_X(idx), R.R_Y(idx), gr_phi_coarse, curve_seq_coarse, start_idx, end_idx, curve_n, w, int_eps, M);
     end
     disp("finished Gauss-Konrod")
     %%
@@ -326,7 +322,7 @@ function u_num = u_num_global(x, y, gr_phi, curve_seq, start_idx, end_idx, curve
     end
 end
 
-function u_num = u_num_near_boundary_global(x, y, gr_phi, curve_seq, start_idx, end_idx, curve_n, w, int_eps)
+function u_num = u_num_near_boundary_global(x, y, gr_phi, curve_seq, start_idx, end_idx, curve_n, w, int_eps, M)
     K_general = @(x, theta, curve) ...
     -1 / (2 * pi) * ( ...
         (x(1) - curve.l_1(theta)) .* curve.l_2_prime(theta) - ...
@@ -368,7 +364,7 @@ function u_num = u_num_near_boundary_global(x, y, gr_phi, curve_seq, start_idx, 
         ds = 1/n_local;
         s_vals = linspace(0, 1-ds, n_local);
 %         u_num = u_num + real(local_fft_coeffs' * gk_integrals);
-        sp = spapi(8, s_vals, phi_local);  % 8 = spline order = degree + 1
+        sp = spapi(M, s_vals, phi_local);  % 8 = spline order = degree + 1
 
         u_num = u_num + quadgk(@(s) fnval(sp, s) .*K_general([x; y], w(s), curr).* sqrt(curr.l_1_prime(w(s)).^2 + curr.l_2_prime(w(s)).^2), 0, 1, 'AbsTol', max(int_eps / curve_n(i), 1e-14));
         curr = curr.next_curve;

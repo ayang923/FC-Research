@@ -1,4 +1,4 @@
-function [R, interior_patches, FC_patches] = FC2D(f, h, curve_seq, eps_xi_eta, eps_xy, d, C_S, n_r, A_S, Q_S, C_C, A_C, Q_C, M)
+function [R, interior_patches, FC_patches, fc_err] = FC2D(f, h, curve_seq, eps_xi_eta, eps_xy, d, C_S, n_r, A_S, Q_S, C_C, A_C, Q_C, M)
 %FC2D Summary of this function goes here
 %   Detailed explanation goes here
     interior_patches = curve_seq.construct_patches(f, d, eps_xi_eta, eps_xy);
@@ -32,6 +32,7 @@ function [R, interior_patches, FC_patches] = FC2D(f, h, curve_seq, eps_xi_eta, e
     R.compute_fc_coeffs();
     [R_X_err, R_Y_err, f_interpolation, interior_idx] = R.ifft_interpolation(R.h/2);
     f_exact = f(R_X_err, R_Y_err);
+    fc_err = max(abs(f_exact(interior_idx) - f_interpolation(interior_idx)));
     disp(['fc error: ', num2str(max(abs(f_exact(interior_idx) - f_interpolation(interior_idx)), [], 'all'))])
 end
 
