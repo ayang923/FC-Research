@@ -113,10 +113,10 @@ classdef R_cartesian_mesh_obj < handle
             obj.f_R = zeros(obj.n_y, obj.n_x);
         end
         
-        function [R_patch_idxs] = interpolate_patch(obj, patch, M)
+        function [R_patch_idxs] = interpolate_patch(obj, patch, n_r, M)
             % constructs vector of idxs of points that are in both patch
             % and cartesian mesh
-            [bound_X, bound_Y] = patch.boundary_mesh_xy(false);
+            [bound_X, bound_Y] = patch.boundary_mesh_xy(n_r, false);
             in_patch = inpolygon_mesh(obj.R_X, obj.R_Y, bound_X, bound_Y) & ~obj.in_interior;
             R_patch_idxs = obj.R_idxs(in_patch);
             

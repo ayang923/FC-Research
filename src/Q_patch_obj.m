@@ -167,7 +167,7 @@ classdef Q_patch_obj < handle
             [X, Y] = obj.convert_to_XY(XI, ETA);
         end
         
-        function [boundary_mesh_xi, boundary_mesh_eta] = boundary_mesh(obj, pad_boundary)
+        function [boundary_mesh_xi, boundary_mesh_eta] = boundary_mesh(obj, n_r, pad_boundary)
             % boundary_mesh returns a discrete mesh of the boundary of patch in xi-eta
             %   space
             % 
@@ -183,15 +183,17 @@ classdef Q_patch_obj < handle
                 h_xi = 0;
                 h_eta = 0;
             end
-
-            boundary_mesh_xi = [ones(obj.n_eta, 1)*(obj.xi_start-h_xi); obj.xi_mesh(); ones(obj.n_eta, 1)*(obj.xi_end+h_xi); flip(obj.xi_mesh()); obj.xi_start-h_xi];
-            boundary_mesh_eta = [obj.eta_mesh(); ones(obj.n_xi, 1)*(obj.eta_end+h_eta); flip(obj.eta_mesh); ones(obj.n_xi, 1)*(obj.eta_start-h_eta); obj.eta_start-h_eta];
+            
+            n_r_xi_mesh = transpose(linspace(obj.xi_start, obj.xi_end, obj.n_xi*n_r));
+            n_r_eta_mesh = transpose(linspace(obj.eta_start, obj.eta_end, obj.n_eta*n_r));
+            boundary_mesh_xi = [ones(obj.n_eta*n_r, 1)*(obj.xi_start-h_xi); n_r_xi_mesh; ones(obj.n_eta*n_r, 1)*(obj.xi_end+h_xi); flip(n_r_xi_mesh); obj.xi_start-h_xi];
+            boundary_mesh_eta = [n_r_eta_mesh; ones(obj.n_xi*n_r, 1)*(obj.eta_end+h_eta); flip(n_r_eta_mesh); ones(obj.n_xi*n_r, 1)*(obj.eta_start-h_eta); obj.eta_start-h_eta];
         end
         
-        function [boundary_mesh_x, boundary_mesh_y] = boundary_mesh_xy(obj, pad_boundary)
+        function [boundary_mesh_x, boundary_mesh_y] = boundary_mesh_xy(obj, n_r, pad_boundary)
             % boundary_mesh_xy returns the x-y coordinates of the
             %   discretized boundary mesh from boundary_mesh
-            [boundary_mesh_xi, boundary_mesh_eta] = obj.boundary_mesh(pad_boundary);
+            [boundary_mesh_xi, boundary_mesh_eta] = obj.boundary_mesh(n_r, pad_boundary);
             [boundary_mesh_x, boundary_mesh_y] = obj.convert_to_XY(boundary_mesh_xi, boundary_mesh_eta);
         end
         

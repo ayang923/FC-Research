@@ -8,7 +8,7 @@ function FC2D_patches(interior_patches, R, f_interior, curve_seq, d, C_S, n_r, A
     end
 
     for i=1:length(FC_patches)
-        R.interpolate_patch(FC_patches{i}, M);
+        R.interpolate_patch(FC_patches{i}, n_r, M);
     end
 
     R.f_R(R.in_interior) = f_interior;

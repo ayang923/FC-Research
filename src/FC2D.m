@@ -21,10 +21,10 @@ function [R, interior_patches, FC_patches, fc_err] = FC2D(f, h, curve_seq, eps_x
     end
 
     [boundary_X, boundary_Y] = curve_seq.construct_boundary_mesh(n_r);
-    R = R_cartesian_mesh_obj(x_min-h, x_max+h, y_min-h, y_max+h, h, boundary_X, boundary_Y);
+    R = R_cartesian_mesh_obj(x_min-rand(1)*h, x_max+rand(1)*h, y_min-rand(1)*h, y_max+rand(1)*h, h, boundary_X, boundary_Y);
 
     for i=1:length(FC_patches)
-        R.interpolate_patch(FC_patches{i}, M);
+        R.interpolate_patch(FC_patches{i}, n_r, M);
     end
 
     R.fill_interior(f);

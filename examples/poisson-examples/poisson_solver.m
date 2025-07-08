@@ -7,7 +7,7 @@ function [u_num_mat, R] = poisson_solver(curve_seq, f, u_boundary, h, G_cf, p, e
 R.f_R = R.inv_lap;
 
 u_m_up_boundary = @(x, y) u_boundary(x, y) - R_locally_compute_vec(R, x, y, M);
-uh = laplace_solver(R, curve_seq, u_m_up_boundary, G_cf, p, M, fc_err/10);
+uh = laplace_solver(R, curve_seq, u_m_up_boundary, G_cf, p, M, fc_err/10, n_r);
 
 u_num_mat = uh+R.f_R;
 end

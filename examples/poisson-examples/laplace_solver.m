@@ -1,4 +1,4 @@
-function [u_num_mat] = laplace_solver(R, curve_seq, u_G, G_cf, p, M, int_eps)
+function [u_num_mat] = laplace_solver(R, curve_seq, u_G, G_cf, p, M, int_eps, n_r)
     curve_seq_coarse = Curve_seq_obj();
     curr = curve_seq.first_curve;
     for i = 1:curve_seq.n_curves
@@ -29,19 +29,19 @@ function [u_num_mat] = laplace_solver(R, curve_seq, u_G, G_cf, p, M, int_eps)
     for i = 1:curve_seq.n_curves
         %S_patch
         S_interior_patch = interior_patches{2*i-1}.Q;
-        [bound_X, bound_Y] = S_interior_patch.boundary_mesh_xy(false);
+        [bound_X, bound_Y] = S_interior_patch.boundary_mesh_xy(n_r, false);
         in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
         in_S_patch{i} = in_patch;
         in_S_patch_global = in_S_patch_global | in_patch;
 
         %C_patch 
         C_L_interior_patch = interior_patches{2*i}.L;
-        [bound_X, bound_Y] = C_L_interior_patch.boundary_mesh_xy(false);
+        [bound_X, bound_Y] = C_L_interior_patch.boundary_mesh_xy(n_r, false);
         in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
         in_C_patch_global = in_C_patch_global | in_patch;
 
         C_W_interior_patch = interior_patches{2*i}.W;
-        [bound_X, bound_Y] = C_W_interior_patch.boundary_mesh_xy(false);
+        [bound_X, bound_Y] = C_W_interior_patch.boundary_mesh_xy(n_r, false);
         in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
         in_C_patch_global = in_C_patch_global | in_patch;
     end
