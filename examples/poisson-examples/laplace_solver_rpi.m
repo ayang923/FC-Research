@@ -50,22 +50,31 @@ for i = 1:curve_seq.n_curves
 end
 
 corner_theta_thresholds = zeros(curve_seq.n_curves, 2);
+corner_theta_j_thresholds =  zeros(curve_seq.n_curves, 2);
 curr = curve_seq.first_curve;
 for i = 1:curve_seq.n_curves
     %S_patch
     [theta_1, theta_2] = compute_normal_intersection(curr, curr.next_curve, M, R.h, eps_xy, [1; 0]);
-    corner_theta_thresholds(i, 2) = theta_1;
+    corner_theta_j_thresholds(i, 2) = floor(theta_1 * (curr.n-1)) + 1;
+    corner_theta_thresholds(i, 2) = (corner_theta_j_thresholds(i, 2)-1)/(curr.n-1);
     if i == curve_seq.n_curves
-        corner_theta_thresholds(1, 1) = theta_2;
+        corner_theta_j_thresholds(1, 1) = ceil(theta_2 * (curve_seq.first_curve.n-1)) + 1;
+        corner_theta_thresholds(1, 1) = (corner_theta_j_thresholds(1, 1) -1)/ (curve_seq.first_curve.n-1);
     else
-        corner_theta_thresholds(i+1, 1) = theta_2;;
+        corner_theta_j_thresholds(i+1, 1) = ceil(theta_2 * (curr.next_curve.n-1)) + 1;
+        corner_theta_thresholds(i+1, 1) = (corner_theta_j_thresholds(i+1, 1) -1)/ (curr.next_curve.n-1);
     end
+    
+    curr = curr.next_curve;
 end
 
 corner_theta_thresholds
-
-scatter(R.R_X(in_S_patch_global), R.R_Y(in_S_patch_global))
-
+figure;
+plot(R.boundary_X, R.boundary_Y)
+hold on;
+scatter(curve_seq.first_curve.l_1(corner_theta_thresholds(1, 1:2)), curve_seq.first_curve.l_2(corner_theta_thresholds(1, 1:2)), 'x')
+theta_mesh = interior_patches{1}.xi_mesh;
+scatter(curve_seq.first_curve.l_1(theta_mesh(corner_theta_j_thresholds(1, 1:2))), curve_seq.first_curve.l_2(theta_mesh(corner_theta_j_thresholds(1, 1:2))), 'o')
 % Coarse density
 R_coarse = 1;
 
@@ -88,17 +97,17 @@ u_num_mat = zeros(R.n_y, R.n_x);
 % coarse density u_num
 u_num_coarse = @(x, y) u_num_global(x, y, gr_phi_coarse, curve_seq_coarse, start_idx, end_idx, curve_n, w);
 
-disp("started Gauss-Konrod");
-
-% Gauss-Konrod quadrature for points only in C type patches
-C_nS_idxs = R.R_idxs(in_C_patch_global & ~ in_S_patch_global);
-for idx = C_nS_idxs'
-    u_num_mat(idx) = u_num_near_boundary_global(R.R_X(idx), R.R_Y(idx), gr_phi_coarse, curve_seq_coarse, start_idx, end_idx, curve_n, w, int_eps, M);
-end
-disp("finished Gauss-Konrod")
+% disp("started Gauss-Konrod");
+% 
+% % Gauss-Konrod quadrature for points only in C type patches
+% C_nS_idxs = R.R_idxs(in_C_patch_global & ~ in_S_patch_global);
+% for idx = C_nS_idxs'
+%     u_num_mat(idx) = u_num_near_boundary_global(R.R_X(idx), R.R_Y(idx), gr_phi_coarse, curve_seq_coarse, start_idx, end_idx, curve_n, w, int_eps, M);
+% end
+% disp("finished Gauss-Konrod")
 %%
 % evaluating u_num_coarse on cartesian mesh
-interior_msk = ~in_C_patch_global & ~in_S_patch_global & R.in_interior;
+interior_msk = ~in_S_patch_global & R.in_interior;
 interior_idxs = R.R_idxs(interior_msk);
 for idx = interior_idxs'
     u_num_mat(idx) = u_num_coarse(R.R_X(idx), R.R_Y(idx));
@@ -146,9 +155,9 @@ u_num_fine = @(x, y) u_num_global(x, y, gr_phi_fine, curve_seq_coarse, start_idx
 % excludes boundary
 for eta_idx = M:-1:2
     for i = 1:curve_seq.n_curves
-        Q_patch = interior_patches{2*i-1}.Q;
+        Q_patch = interior_patches{i};
         [patch_X, patch_Y] = Q_patch.xy_mesh;
-        for xi_idx = 1:size(patch_X, 2)
+        for xi_idx = corner_theta_j_thresholds(i, 1):corner_theta_j_thresholds(i, 2)
             while true
                 u_num_coarse_val = u_num_coarse(patch_X(eta_idx, xi_idx), patch_Y(eta_idx, xi_idx));
                 u_num_fine_val = u_num_fine(patch_X(eta_idx, xi_idx), patch_Y(eta_idx, xi_idx));
@@ -166,29 +175,33 @@ for eta_idx = M:-1:2
                 [~, curve_n_fine, start_idx_fine, end_idx_fine] = compute_curve_param(R_fine, curve_seq_coarse);
                 u_num_fine = @(x, y) u_num_global(x, y, gr_phi_fine, curve_seq_coarse, start_idx_fine, end_idx_fine, curve_n_fine, w);
             end
-            Q_patch.f_XY(eta_idx, xi_idx) = u_num_coarse(patch_X(eta_idx, xi_idx), patch_Y(eta_idx, xi_idx));
+            Q_patch.f_XY(eta_idx, xi_idx) = u_num_coarse_val;
         end
+        
     end
 end
 
 % boundary value computation
 for i = 1:curve_seq.n_curves
-    Q_patch = interior_patches{2*i-1}.Q;
+    Q_patch = interior_patches{i};
     [patch_X, patch_Y] = Q_patch.xy_mesh;
 
-    Q_patch.f_XY(1, :) = u_G(patch_X(1, :), patch_Y(1, :));
+    Q_patch.f_XY(1,corner_theta_j_thresholds(i, 1):corner_theta_j_thresholds(i, 2)) = u_G(patch_X(1, corner_theta_j_thresholds(i, 1):corner_theta_j_thresholds(i, 2)), patch_Y(1, corner_theta_j_thresholds(i, 1):corner_theta_j_thresholds(i, 2)));
 end
 
 for i = 1:curve_seq.n_curves
-    Q_patch = interior_patches{2*i-1}.Q;
+    Q_patch = interior_patches{i};
 
     in_patch = in_S_patch{i};
     R_patch_idxs = R.R_idxs(in_patch);
 
     [P_xi, P_eta] = R_xi_eta_inversion(R, Q_patch, in_patch);
+    smooth_patch_msk = P_xi <= corner_theta_thresholds(i, 2) & P_xi >= corner_theta_thresholds(i, 1);
 
     for idx = 1:length(R_patch_idxs)
-        u_num_mat(R_patch_idxs(idx)) = Q_patch.locally_compute(P_xi(idx), P_eta(idx), M);
+        if smooth_patch_msk(idx)
+            u_num_mat(R_patch_idxs(idx)) = Q_patch_bounded_locally_compute(Q_patch, P_xi(idx), P_eta(idx), M, corner_theta_j_thresholds(i, :));
+        end
     end
 end
 u_num_mat(~R.in_interior) = nan;
@@ -447,7 +460,7 @@ function interior_patches = construct_interior_patches(curve_seq, h_norm, M, eps
 
         J = @(v) [dM_p_1_dxi(v(1), v(2)), dM_p_1_deta(v(1), v(2)); dM_p_2_dxi(v(1), v(2)), dM_p_2_deta(v(1), v(2))];
 
-        S_patch = S_patch_obj(M_p, J, h_norm, eps_xi_eta, eps_xy, curr.n, M, nan);
+        S_patch = S_patch_obj(M_p, J, h_norm, eps_xi_eta, eps_xy, curr.n, M, zeros(M, curr.n));
         interior_patches{i} = S_patch.Q;
         curr = curr.next_curve;
     end
@@ -471,4 +484,57 @@ function  [theta_1, theta_2] = compute_normal_intersection(curve_1, curve_2, M, 
     if ~converged
         warning('Nonconvergence in normal-boundary intersection')
     end
+end
+
+function [f_xy, in_range] = Q_patch_bounded_locally_compute(Q_patch, xi, eta, M, corner_xi_j_thresholds)
+    % locally_compute uses two step one dimensional polynomial interpolation to estimate the
+    %   value of f for any xi, eta within the bounds of the patch (not necessarily on discrete mesh)
+    %
+    % Input parameters:
+    %    xi (double) - scalar xi value within bounds of patch in
+    %       parameter space
+    %    eta (double) - scalar eta value within bounds of patch in
+    %       parameter space
+    %   M (int) - number of interpolation points used for each one
+    %       dimensional procedure
+
+    % check if xi, eta are within bounds of Q
+    if ~Q_patch.in_patch(xi, eta)
+        f_xy = nan;
+        in_range = false;
+        warning('locally computing for point not in patch');
+        return
+    end
+
+    in_range = true;
+    [h_xi, h_eta] = Q_patch.h_mesh();
+
+    % j to the immediate left of point
+    xi_j = floor((xi-Q_patch.xi_start)/h_xi);
+    eta_j = floor((eta-Q_patch.eta_start)/h_eta);
+
+    half_M =  floor(M/2);
+    if mod(M, 2) ~= 0
+        interpol_xi_j_mesh = transpose(xi_j-half_M:xi_j+half_M);
+        interpol_eta_j_mesh = transpose(eta_j-half_M:eta_j+half_M);
+    else
+        interpol_xi_j_mesh = transpose(xi_j-half_M+1:xi_j+half_M);
+        interpol_eta_j_mesh = transpose(eta_j-half_M+1:eta_j+half_M);
+    end
+
+    interpol_xi_j_mesh = shift_idx_mesh(interpol_xi_j_mesh, corner_xi_j_thresholds(1)-1, corner_xi_j_thresholds(2)-1);
+    interpol_eta_j_mesh = shift_idx_mesh(interpol_eta_j_mesh, 0, Q_patch.n_eta-1);
+
+    interpol_xi_mesh = h_xi*interpol_xi_j_mesh + Q_patch.xi_start;
+    interpol_eta_mesh = h_eta*interpol_eta_j_mesh + Q_patch.eta_start;
+
+    % first 1D interpolation
+    interpol_xi_exact = zeros(M, 1);
+    for horz_idx = 1:M
+        mu = [mean(interpol_xi_mesh), std(interpol_xi_mesh)];
+        interpol_val = Q_patch.f_XY(interpol_eta_j_mesh(horz_idx)+1, interpol_xi_j_mesh+1)';
+        interpol_xi_exact(horz_idx) = barylag([(interpol_xi_mesh-mu(1))/mu(2), interpol_val], (xi-mu(1))/mu(2));
+    end
+     % second 1D interpolation
+    f_xy = barylag([interpol_eta_mesh, interpol_xi_exact], eta);
 end
