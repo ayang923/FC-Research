@@ -286,7 +286,7 @@ classdef Q_patch_obj < handle
             if ~obj.in_patch(xi, eta)
                 f_xy = nan;
                 in_range = false;
-                disp('issue');
+                warning('locally computing for point not in patch');
                 return
             end
             
