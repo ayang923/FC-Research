@@ -151,11 +151,11 @@ POU = construct_POU(n_POU);
 for eta_idx = M:-1:2
     for i = 1:curve_seq.n_curves
         interior_patch = interior_patches{i};
-        [patch_X, patch_Y] = interior_patch.xy_mesh;
+        [patch_X_0, patch_Y_0] = interior_patch.xy_mesh;
         for xi_idx = 1:interior_patch.n_xi
             while true
-                u_num_coarse_val = u_num_coarse(patch_X(eta_idx, xi_idx), patch_Y(eta_idx, xi_idx));
-                u_num_fine_val = u_num_fine(patch_X(eta_idx, xi_idx), patch_Y(eta_idx, xi_idx));
+                u_num_coarse_val = u_num_coarse(patch_X_0(eta_idx, xi_idx), patch_Y_0(eta_idx, xi_idx));
+                u_num_fine_val = u_num_fine(patch_X_0(eta_idx, xi_idx), patch_Y_0(eta_idx, xi_idx));
 
                 if abs(u_num_coarse_val - u_num_fine_val) < int_eps
                     break;
@@ -172,26 +172,43 @@ for eta_idx = M:-1:2
             end
             interior_patch.f_XY(eta_idx, xi_idx) = u_num_coarse_val;
         end
-        
-        corner_patch_0 = corner_patches_0{i};
-        [patch_X, patch_Y] = corner_patch_0.xy_mesh;
-        
-        gr_phi_idx_start = start_idx_fine(i);
-        gr_phi_idx_end = start_idx_fine(i)+(corner_theta_j_thresholds(i, 1)*R_fine-1)+n_POU-1;
-        gr_phi_POU = gr_phi_fine; gr_phi_POU((gr_phi_idx_end-(n_POU-1)+1):gr_phi_idx_end) = (1-POU(1:n_POU-1)).*gr_phi_POU((gr_phi_idx_end-(n_POU-1)+1):gr_phi_idx_end);
-        
+    end
+end
+
+POU_start_0 = zeros(curve_seq.n_curves);
+POU_start_1 = zeros(curve_seq.n_curves);
+POU_end_0 = zeros(curve_seq.n_curves);
+POU_end_1 = zeros(curve_seq.n_curves);
+for i = 1:curve_seq.n_curves
+    corner_patch_0 = corner_patches_0{i};
+    [patch_X_0, patch_Y_0] = corner_patch_0.xy_mesh;
+
+    ds = 1/curve_n_fine(i);
+    s_mesh = linspace(0, 1-ds, curve_n_fine(i))'; theta_mesh = w(s_mesh);
+    
+    gr_phi_idx_start_0 = start_idx_fine(i);
+    gr_phi_idx_end_0 = start_idx_fine(i) + sum(theta_mesh < corner_theta_thresholds(i, 1)*2) + n_POU-1;
+    POU_0_interval = (gr_phi_idx_end_0-(n_POU-1)+1):gr_phi_idx_end_0;
+    POU_start_0(i) = POU_0_interval(1);
+    POU_end_0(i) = POU_0_interval(end);
+    gr_phi_POU_0 = gr_phi_fine; gr_phi_POU_0(POU_0_interval) = (1-POU(1:n_POU-1)).*gr_phi_POU_0(POU_0_interval);
+    
+    corner_patch_1 = corner_patches_1{i};
+    [patch_X_1, patch_Y_1] = corner_patch_1.xy_mesh;
+    
+    gr_phi_idx_start_1 = end_idx_fine(i) - sum(theta_mesh > corner_theta_thresholds(i, 2)*2) - n_POU + 1;
+    gr_phi_idx_end_1 = end_idx_fine(i);
+    POU_1_interval = gr_phi_idx_start_1:(gr_phi_idx_start_1+n_POU-1);
+    POU_start_1(i) = POU_1_interval(1);
+    POU_end_1(i) = POU_1_interval(end);
+    gr_phi_POU_1 = gr_phi_fine; gr_phi_POU_1(POU_1_interval) = POU.*gr_phi_POU_1(POU_1_interval);
+    for eta_idx = M:-1:2
         for xi_idx = 1:corner_patch_0.n_xi
-            corner_patch_0.f_XY(eta_idx, xi_idx) = int_num_segment(patch_X(eta_idx, xi_idx), patch_Y(eta_idx, xi_idx), gr_phi_POU, curve_seq, gr_phi_idx_start, gr_phi_idx_end, start_idx_fine, end_idx_fine, curve_n_fine, w );
+            corner_patch_0.f_XY(eta_idx, xi_idx) = int_num_segment(patch_X_0(eta_idx, xi_idx), patch_Y_0(eta_idx, xi_idx), gr_phi_POU_0, curve_seq, gr_phi_idx_start_0, gr_phi_idx_end_0, start_idx_fine, end_idx_fine, curve_n_fine, w );
         end
-        
-        corner_patch_1 = corner_patches_1{i};
-        [patch_X, patch_Y] = corner_patch_1.xy_mesh;
-        gr_phi_idx_start = start_idx_fine(i) + (corner_theta_j_thresholds(i, 2)-1)*R_fine -n_POU+1;
-        gr_phi_idx_end = end_idx_fine(i);
-        gr_phi_POU = gr_phi_fine; gr_phi_POU(gr_phi_idx_start:gr_phi_idx_start+n_POU-1) = POU.*gr_phi_POU(gr_phi_idx_start:gr_phi_idx_start+n_POU-1);
-        
+
         for xi_idx = 1:corner_patch_1.n_xi
-            corner_patch_1.f_XY(eta_idx, xi_idx) = int_num_segment(patch_X(eta_idx, xi_idx), patch_Y(eta_idx, xi_idx), gr_phi_POU, curve_seq, gr_phi_idx_start, gr_phi_idx_end, start_idx_fine, end_idx_fine, curve_n_fine, w );
+            corner_patch_1.f_XY(eta_idx, xi_idx) = int_num_segment(patch_X_1(eta_idx, xi_idx), patch_Y_1(eta_idx, xi_idx), gr_phi_POU_1, curve_seq, gr_phi_idx_start_1, gr_phi_idx_end_1, start_idx_fine, end_idx_fine, curve_n_fine, w );
         end
     end
 end
@@ -202,39 +219,31 @@ i2 = 2;
 x = 0.95;
 y = 0.03;
 
-figure;
+i = i2;
+gr_phi_idx_start_0 = start_idx_fine(i);
+gr_phi_idx_end_0 = start_idx_fine(i) + sum(theta_mesh < corner_theta_thresholds(i, 1)*2) + n_POU-1
+gr_phi_POU_0 = gr_phi_fine; gr_phi_POU_0((gr_phi_idx_end_0-(n_POU-1) + 1):gr_phi_idx_end_0) = (1-POU(1:n_POU-1)).*gr_phi_POU_0(gr_phi_idx_end_0-(n_POU-1) + 1:gr_phi_idx_end_0);
+i2_contr =  int_num_segment(x, y, gr_phi_POU_0, curve_seq, gr_phi_idx_start_0, gr_phi_idx_end_0, start_idx_fine, end_idx_fine, curve_n_fine, w);
 
 i = i1;
-gr_phi_idx_start = start_idx_fine(i) + (corner_theta_j_thresholds(i, 2)-1)*R_fine -n_POU+1;
-gr_phi_idx_end = end_idx_fine(i);
-POU_interval_1 = gr_phi_idx_start:gr_phi_idx_start+n_POU-1;
-end_1 = start_idx_fine(i) + (corner_theta_j_thresholds(i, 2)-1)*R_fine-1;
-gr_phi_POU = gr_phi_fine; gr_phi_POU(gr_phi_idx_start:gr_phi_idx_start+n_POU-1) = POU.*gr_phi_POU(gr_phi_idx_start:gr_phi_idx_start+n_POU-1);
-i1_contr = int_num_segment(x, y, gr_phi_POU, curve_seq, gr_phi_idx_start, gr_phi_idx_end, start_idx_fine, end_idx_fine, curve_n_fine, w )
-
-mesh = 1:length(gr_phi_POU);
-
-i = i2;
-gr_phi_idx_start = start_idx_fine(i);
-gr_phi_idx_end = start_idx_fine(i)+(corner_theta_j_thresholds(i, 1)*R_fine-1)+n_POU-1;
-POU_interval_0 = (gr_phi_idx_end-(n_POU-1)+1):gr_phi_idx_end;
-start_0 = start_idx_fine(i)+(corner_theta_j_thresholds(i, 1)*R_fine);
-gr_phi_POU = gr_phi_fine; gr_phi_POU((gr_phi_idx_end-(n_POU-1)+1):gr_phi_idx_end) = (1-POU(1:n_POU-1)).*gr_phi_POU((gr_phi_idx_end-(n_POU-1)+1):gr_phi_idx_end);
-i2_contr = int_num_segment(x, y, gr_phi_POU, curve_seq, gr_phi_idx_start, gr_phi_idx_end, start_idx_fine, end_idx_fine, curve_n_fine, w )
+gr_phi_idx_start_1 = end_idx_fine(i) - sum(theta_mesh > corner_theta_thresholds(i, 2)*2) - n_POU + 1;
+gr_phi_idx_end_1 = end_idx_fine(i)
+gr_phi_POU_1 = gr_phi_fine; gr_phi_POU_1(gr_phi_idx_start_1:gr_phi_idx_start_1+n_POU-1) = POU.*gr_phi_POU_1(gr_phi_idx_start_1:gr_phi_idx_start_1+n_POU-1);
+i1_contr = int_num_segment(x, y, gr_phi_POU_1, curve_seq, gr_phi_idx_start_1, gr_phi_idx_end_1, start_idx_fine, end_idx_fine, curve_n_fine, w);
 
 gr_phi_POU = gr_phi_fine; 
-gr_phi_POU(POU_interval_1) = (1-POU).*gr_phi_POU(POU_interval_1);
-gr_phi_POU(POU_interval_0) = POU(1:n_POU-1).*gr_phi_POU(POU_interval_0);
-rest_contr = int_num_segment(x, y, gr_phi_POU, curve_seq, start_0, end_1, start_idx_fine, end_idx_fine, curve_n_fine, w)
-
-i1_contr + i2_contr+rest_contr
+POU_0_interval = gr_phi_idx_end_0-(n_POU-1) + 1:gr_phi_idx_end_0;
+POU_1_interval = gr_phi_idx_start_1:gr_phi_idx_start_1+n_POU-1;
+gr_phi_POU(POU_1_interval) = (1-POU).*gr_phi_POU(POU_1_interval);
+gr_phi_POU(POU_0_interval) = POU(1:n_POU-1).*gr_phi_POU(POU_0_interval);
+rest_contr = int_num_segment(x, y, gr_phi_POU, curve_seq, gr_phi_idx_end_0-(n_POU-1)+1, gr_phi_idx_start_1+n_POU-1, start_idx_fine, end_idx_fine, curve_n_fine, w)
 
 % boundary value computation
 for i = 1:curve_seq.n_curves
     interior_patch = interior_patches{i};
-    [patch_X, patch_Y] = interior_patch.xy_mesh;
+    [patch_X_0, patch_Y_0] = interior_patch.xy_mesh;
 
-    interior_patch.f_XY(1, :) = u_G(patch_X(1, corner_theta_j_thresholds(i, 1):corner_theta_j_thresholds(i, 2)), patch_Y(1, corner_theta_j_thresholds(i, 1):corner_theta_j_thresholds(i, 2)));
+    interior_patch.f_XY(1, :) = u_G(patch_X_0(1, corner_theta_j_thresholds(i, 1):corner_theta_j_thresholds(i, 2)), patch_Y_0(1, corner_theta_j_thresholds(i, 1):corner_theta_j_thresholds(i, 2)));
 end
 
 for i = 1:curve_seq.n_curves
@@ -362,8 +371,6 @@ function int_num = int_num_segment(x, y, gr_phi, curve_seq, gr_phi_idx_start, gr
             theta_mesh = w(s_mesh);
 
              gr_phi_idxs = (start_idx(curve_i)-1 + (curve_int_start_idx:(gr_phi_idx_end - start_idx(curve_i)+1)));
-             scatter3(curr.l_1(theta_mesh), curr.l_2(theta_mesh), gr_phi(gr_phi_idxs));
-             hold on;
              int_num = int_num+transpose(K_general([x; y], theta_mesh, curr).*gr_phi(gr_phi_idxs).*sqrt(curr.l_1_prime(theta_mesh).^2+curr.l_2_prime(theta_mesh).^2)) * ones(length(s_mesh), 1) * ds;
              break;
         elseif integrating
@@ -371,8 +378,6 @@ function int_num = int_num_segment(x, y, gr_phi, curve_seq, gr_phi_idx_start, gr
             theta_mesh = w(s_mesh);
 
             gr_phi_idxs = (start_idx(curve_i)-1 + (curve_int_start_idx:curve_n(curve_i)));
-            scatter3(curr.l_1(theta_mesh), curr.l_2(theta_mesh), gr_phi(gr_phi_idxs));
-            hold on;
             int_num = int_num+transpose(K_general([x; y], theta_mesh, curr).*gr_phi(gr_phi_idxs).*sqrt(curr.l_1_prime(theta_mesh).^2+curr.l_2_prime(theta_mesh).^2)) * ones(length(s_mesh), 1) * ds;
             node_i = node_i + curve_n(curve_i);
         end
