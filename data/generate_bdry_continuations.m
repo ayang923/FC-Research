@@ -17,14 +17,17 @@ fprintf('Performing precomputations...\n');
 [Q, A] =  ... 
     precomp_fc_data(d, C, Z, E, n_ovr, modes_to_reduce, num_digits, n_r);
 
-save(['FC_data/A_d',num2str(d),'_C', num2str(C), '_r', num2str(n_r), '.mat'], 'A');
-save(['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat'], 'Q');
+this_file = mfilename('fullpath');
+this_folder = fileparts(this_file);
+
+save(fullfile(this_folder, ['FC_data/A_d',num2str(d),'_C', num2str(C), '_r', num2str(n_r), '.mat']), 'A');
+save(fullfile(this_folder, ['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat']), 'Q');
 
 % Saving to Ascii
 A = double(A);
 Q = double(Q);
-save(['FC_data/A_d',num2str(d),'_C', num2str(C), '.txt'], "A", "-ascii");
-save(['FC_data/Q_d',num2str(d),'_C', num2str(C), '.txt'], "Q", "-ascii")
+save(fullfile(this_folder, ['FC_data/A_d',num2str(d),'_C', num2str(C), '.txt']), "A", "-ascii");
+save(fullfile(this_folder, ['FC_data/Q_d',num2str(d),'_C', num2str(C), '.txt']), "Q", "-ascii")
 
 % save(['FC_data/ArQr_d',num2str(d),'_C', num2str(C), '.mat'], 'ArQr');
 % save(['FC_data/AlQl_d',num2str(d),'_C', num2str(C), '.mat'], 'AlQl');
