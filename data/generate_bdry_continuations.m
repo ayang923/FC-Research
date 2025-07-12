@@ -26,8 +26,8 @@ save(fullfile(this_folder, ['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', nu
 % Saving to Ascii
 A = double(A);
 Q = double(Q);
-save(fullfile(this_folder, ['FC_data/A_d',num2str(d),'_C', num2str(C), '.txt']), "A", "-ascii");
-save(fullfile(this_folder, ['FC_data/Q_d',num2str(d),'_C', num2str(C), '.txt']), "Q", "-ascii")
+dlmwrite(fullfile(this_folder, ['FC_data/A_d',num2str(d),'_C', num2str(C), '_r', num2str(n_r),'.txt']), A, 'precision', 20);
+dlmwrite(fullfile(this_folder, ['FC_data/Q_d',num2str(d),'_C', num2str(C), '_r', num2str(n_r), '.txt']), Q, 'precision', 20)
 
 % save(['FC_data/ArQr_d',num2str(d),'_C', num2str(C), '.mat'], 'ArQr');
 % save(['FC_data/AlQl_d',num2str(d),'_C', num2str(C), '.mat'], 'AlQl');
