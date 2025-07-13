@@ -1,16 +1,16 @@
 clc; clear; close all;
 
-f = @(x, y) 4 + (1 + x.^2 + y.^2).*(sin(2.5*pi*x - 0.5) + cos(2*pi*y - 0.5));
+f = @(x, y) -((x+1).^2+(y+1).^2).*sin(10*pi*x).*sin(10*pi*y);
 
 d = 4;
 C_S = 27;
 C_C = 27;
 n_r = 6;
 
-M = d+5;
+M = d+3;
 
-h_tan = 0.001;
-h = 0.0005;
+h_tan = 0.002;
+h = 0.001;
 
 if(exist(['FC_data/A_d',num2str(d),'_C', num2str(C_S), '_r', num2str(n_r), '.mat']) == 0 | ...
    exist(['FC_data/Q_d',num2str(d),'_C', num2str(C_S),  '_r', num2str(n_r), '.mat']) == 0)
