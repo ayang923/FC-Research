@@ -1,4 +1,4 @@
-function [u_num_mat] = laplace_solver(R, curve_seq, u_G, G_cf, p, M, int_eps, n_r)
+function [u_num_mat] = laplace_solver(R, curve_seq, u_G, G_cf, p, M, int_eps, eps_xi_eta, eps_xy, n_r)
     curve_seq_coarse = Curve_seq_obj();
     curr = curve_seq.first_curve;
     for i = 1:curve_seq.n_curves
@@ -14,12 +14,14 @@ function [u_num_mat] = laplace_solver(R, curve_seq, u_G, G_cf, p, M, int_eps, n_
     w_prime = @(s) p*((v_prime(s).*v(s).^(p-1))./(v(s).^p+v(1-s).^p)-(v(s).^(p-1).*v_prime(s)-v(1-s).^(p-1).*v_prime(1-s)).*v(s).^p./(v(s).^p+v(1-s).^p).^2);
 
     %% Interior Patches
+
     curr = curve_seq.first_curve;
     for i=1:curve_seq.n_curves
         curr.h_norm = R.h;
         curr = curr.next_curve;
     end
-    interior_patches = curve_seq.construct_patches(@(x, y) ones(size(x)), M, 1e-13, 1e-13);
+    
+    interior_patches = curve_seq.construct_patches(@(x, y) ones(size(x)), M, eps_xi_eta, eps_xy);
 
     % computing Cartesian points in each patch
     in_S_patch_global = false(size(R.R_X));
@@ -340,8 +342,13 @@ function u_num = u_num_near_boundary_global(x, y, gr_phi, curve_seq, start_idx, 
     u_num = 0;
 
     for i = 1:curve_seq.n_curves
-        phi_local = gr_phi(start_idx(i):end_idx(i));
-        n_local = length(phi_local);
+        if i == curve_seq.n_curves
+            phi_local = [gr_phi(start_idx(i):end_idx(i)); gr_phi(1)];
+        else
+            phi_local = gr_phi(start_idx(i):end_idx(i)+1);
+        end
+        
+        n_local = curve_n(i);
 
 %         if mod(n_local, 2) == 0
 %             freq_mesh = -n_local/2:(n_local/2 - 1);
@@ -362,11 +369,30 @@ function u_num = u_num_near_boundary_global(x, y, gr_phi, curve_seq, start_idx, 
 %         end
 
         ds = 1/n_local;
-        s_vals = linspace(0, 1-ds, n_local);
 %         u_num = u_num + real(local_fft_coeffs' * gk_integrals);
-        sp = spapi(M, s_vals, phi_local);  % 8 = spline order = degree + 1
-
-        u_num = u_num + quadgk(@(s) fnval(sp, s) .*K_general([x; y], w(s), curr).* sqrt(curr.l_1_prime(w(s)).^2 + curr.l_2_prime(w(s)).^2), 0, 1, 'AbsTol', max(int_eps / curve_n(i), 1e-14));
+        u_num = u_num + quadgk(@(s)phi_interpolation(s, ds, phi_local, M) .*K_general([x; y], w(s), curr).* sqrt(curr.l_1_prime(w(s)).^2 + curr.l_2_prime(w(s)).^2), 0, 1, 'AbsTol', max(int_eps / curve_seq.n_curves, 1e-14), 'MaxIntervalCount', 2000);
+%         sp = spapi(M, transpose(0:ds:1), phi_local);  % 8 = spline order = degree + 1
+ 
+%         u_num = u_num + quadgk(@(s) fnval(sp, s) .*K_general([x; y], w(s), curr).* sqrt(curr.l_1_prime(w(s)).^2 + curr.l_2_prime(w(s)).^2), 0, 1, 'AbsTol', max(int_eps / curve_n(i), 1e-14));
         curr = curr.next_curve;
     end
+end
+
+function phi_interpolation = phi_interpolation(s, ds, phi_vals, M)
+    % j to the immediate left of point
+            s_j = floor((s)/ds);
+            phi_interpolation = zeros(size(s));
+            
+            for i = 1:numel(s_j)
+                half_M =  floor(M/2);
+                if mod(M, 2) ~= 0
+                    interpol_s_j_mesh = transpose(s_j(i)-half_M:s_j(i)+half_M);
+                else
+                    interpol_s_j_mesh = transpose(s_j(i)-half_M+1:s_j(i)+half_M);
+                end
+                interpol_s_j_mesh = shift_idx_mesh(interpol_s_j_mesh, 0, 1/ds);
+                interpol_s_mesh = ds*interpol_s_j_mesh;
+                
+                phi_interpolation(i) = barylag([interpol_s_mesh, phi_vals(interpol_s_j_mesh+1)], s(i));
+            end
 end
