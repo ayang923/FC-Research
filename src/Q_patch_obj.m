@@ -261,7 +261,7 @@ classdef Q_patch_obj < handle
 
             for k = 1:size(initial_guesses, 2)
                 initial_guess = initial_guesses(:, k);
-                [v_guess, converged] = newton_solve(@(v) err_guess(x, y, v), obj.J, initial_guess, obj.eps_xy, 100);
+                [v_guess, converged] = newton_solve(@(v) err_guess(x, y, v), obj.J, initial_guess, obj.eps_xy, 1000);
                 
                 [xi, eta] = obj.round_boundary_points(v_guess(1), v_guess(2));                                                
                 if converged && obj.in_patch(xi, eta)
