@@ -243,18 +243,7 @@ classdef Q_patch_obj < handle
             %       will use a boundary mesh as the initial guesses
             
             if isnan(initial_guesses)
-                N = 20;
-            
-                N_segment = ceil(N/4);
-                
-                % TODO: this is just a boundary mesh
-                xi_mesh = transpose(linspace(obj.xi_start, obj.xi_end, N_segment+1));
-                eta_mesh = transpose(linspace(obj.eta_start, obj.eta_end, N_segment+1));
-
-                xi_initial = [xi_mesh(1:end-1); xi_mesh(1:end-1); ones(N_segment, 1)*obj.xi_start; ones(N_segment, 1)*obj.xi_end];
-                eta_initial = [ones(N_segment, 1)*obj.eta_start; ones(N_segment, 1)*obj.eta_end; eta_mesh(1:end-1); eta_mesh(1:end-1)];
-                
-                initial_guesses = [xi_initial'; eta_initial'];                
+                initial_guesses = obj.default_initial_guesses(20);      
             end
 
             err_guess = @(x, y, v) transpose(obj.M_p(v(1), v(2))) - [x; y];
@@ -268,6 +257,18 @@ classdef Q_patch_obj < handle
                     return
                 end
             end
+        end
+        
+        function initial_guesses = default_initial_guesses(obj, N)
+            N_segment = ceil(N/4);
+                
+            xi_mesh = transpose(linspace(obj.xi_start, obj.xi_end, N_segment+1));
+            eta_mesh = transpose(linspace(obj.eta_start, obj.eta_end, N_segment+1));
+
+            xi_initial = [xi_mesh(1:end-1); xi_mesh(1:end-1); ones(N_segment, 1)*obj.xi_start; ones(N_segment, 1)*obj.xi_end];
+            eta_initial = [ones(N_segment, 1)*obj.eta_start; ones(N_segment, 1)*obj.eta_end; eta_mesh(1:end-1); eta_mesh(1:end-1)];
+
+            initial_guesses = [xi_initial'; eta_initial'];
         end
 
         function [f_xy, in_range] = locally_compute(obj, xi, eta, M)
@@ -315,9 +316,8 @@ classdef Q_patch_obj < handle
             % first 1D interpolation
             interpol_xi_exact = zeros(M, 1);
             for horz_idx = 1:M
-                mu = [mean(interpol_xi_mesh), std(interpol_xi_mesh)];
                 interpol_val = obj.f_XY(interpol_eta_j_mesh(horz_idx)+1, interpol_xi_j_mesh+1)';
-                interpol_xi_exact(horz_idx) = barylag([(interpol_xi_mesh-mu(1))/mu(2), interpol_val], (xi-mu(1))/mu(2));
+                interpol_xi_exact(horz_idx) = barylag([interpol_xi_mesh, interpol_val], xi);
             end
              % second 1D interpolation
             f_xy = barylag([interpol_eta_mesh, interpol_xi_exact], eta);
@@ -351,7 +351,7 @@ classdef Q_patch_obj < handle
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);    
             
             w_unnormalized =  main_w(XI_overlap, ETA_overlap);
-            obj.apply_w(w_unnormalized, window_patch, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
         end
         
         function apply_w_normalization_xi_left(obj, window_patch)
@@ -381,7 +381,7 @@ classdef Q_patch_obj < handle
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);                
             
             w_unnormalized = main_w(XI_overlap, ETA_overlap);
-            obj.apply_w(w_unnormalized, window_patch, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);        
+            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);        
         end
     
         function apply_w_normalization_eta_up(obj, window_patch)
@@ -411,7 +411,7 @@ classdef Q_patch_obj < handle
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);         
             
             w_unnormalized = main_w(XI_overlap, ETA_overlap);
-            obj.apply_w(w_unnormalized, window_patch, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
         end
         
         function apply_w_normalization_eta_down(obj, window_patch)
@@ -441,10 +441,10 @@ classdef Q_patch_obj < handle
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);        
             
             w_unnormalized = main_w(XI_overlap, ETA_overlap);
-            obj.apply_w(w_unnormalized, window_patch, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
         end
         
-        function apply_w(obj, w_unnormalized, window_patch, window_w, overlap_X, overlap_Y, overlap_XI_j, overlap_ETA_j, initial_guesses)
+        function apply_w(obj, w_unnormalized, window_patch, window_patch_bound_xi, window_w, overlap_X, overlap_Y, overlap_XI_j, overlap_ETA_j, initial_guesses)            
             for i = 1:size(overlap_X, 1)
                 if mod(i, 2) == 1
                     j_lst = 1:size(overlap_X, 2);
@@ -453,9 +453,24 @@ classdef Q_patch_obj < handle
                 end
 
                 for j = j_lst
-                    [window_patch_xi, window_patch_eta, converged] = window_patch.inverse_M_p(overlap_X(i, j), overlap_Y(i, j), initial_guesses);
+                    if isnan(initial_guesses)
+                        initial_guesses = obj.default_initial_guesses(20);
+                    end
+                    
+                    for initial_guess = initial_guesses
+                        [window_patch_xi, window_patch_eta, converged] = window_patch.inverse_M_p(overlap_X(i, j), overlap_Y(i, j), initial_guesses);
+                        if window_patch_bound_xi
+                            in_VpR = window_patch_xi >= window_patch.xi_start && window_patch_xi <= window_patch.xi_end;
+                        else
+                            in_VpR = window_patch_eta >= window_patch.eta_start && window_patch_eta <= window_patch.eta_end;
+                        end
 
-                    if converged
+                        if converged && in_VpR
+                            break;
+                        end
+                    end
+
+                    if converged && in_VpR
                         xi_j = overlap_XI_j(i, j) + 1;
                         eta_j = overlap_ETA_j(i, j) + 1;
                         obj.f_XY(eta_j, xi_j) = obj.f_XY(eta_j, xi_j) .* w_unnormalized(i, j) ./ (window_w(window_patch_xi, window_patch_eta)+w_unnormalized(i, j));
@@ -463,7 +478,7 @@ classdef Q_patch_obj < handle
                         warning("Nonconvergence in computing C2_norm")
                     end
 
-                    if converged
+                    if converged && in_VpR
                         initial_guesses = [window_patch_xi; window_patch_eta]; % using previous point as next initial guess
                     end
                 end
@@ -615,5 +630,5 @@ function [window_w] = compute_w_normalization_window(main_patch, main_w, window_
     [X_overlap_window, Y_overlap_window] = window_patch.convert_to_XY(XI_overlap_window, ETA_overlap_window);
     
     w_unnormalized = window_w(XI_overlap_window, ETA_overlap_window);
-    window_patch.apply_w(w_unnormalized, main_patch, main_w, X_overlap_window, Y_overlap_window, XI_j_window, ETA_j_window, nan);
+    window_patch.apply_w(w_unnormalized, main_patch, ~up_down, main_w, X_overlap_window, Y_overlap_window, XI_j_window, ETA_j_window, nan);
 end
