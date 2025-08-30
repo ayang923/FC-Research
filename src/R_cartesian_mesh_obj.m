@@ -170,15 +170,11 @@ classdef R_cartesian_mesh_obj < handle
             % first 1D interpolation
             interpol_x_exact = zeros(M, 1);
             for horz_idx = 1:M
-                mu_x = [mean(interpol_x_mesh), std(interpol_x_mesh)];
                 interpol_val = obj.f_R(interpol_y_j_mesh(horz_idx)+1, interpol_x_j_mesh+1)';
-                mu_f =  [mean(interpol_val), std(interpol_val)];
-                interpol_x_exact(horz_idx) = barylag([(interpol_x_mesh-mu_x(1))/mu_x(2), (interpol_val-mu_f(1))/mu_f(2)], (x-mu_x(1))/mu_x(2)) * mu_f(2)+mu_f(1);
+                interpol_x_exact(horz_idx) = barylag([interpol_x_mesh, interpol_val], x);
             end
              % second 1D interpolation
-             mu_y = [mean(interpol_y_mesh), std(interpol_y_mesh)];
-             mu_x_exact = [mean(interpol_x_exact), std(interpol_x_exact)];
-            f_xy = barylag([(interpol_y_mesh-mu_y(1))/mu(2), (interpol_x_exact-mu_x_exact(1))/mu_x_exact(2)], y) * mu_x_exact(2) + mu_x_exact(1);
+            f_xy = barylag([interpol_y_mesh, interpol_x_exact], y);
         end
         
         function compute_fc_coeffs(obj)

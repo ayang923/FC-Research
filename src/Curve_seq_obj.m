@@ -30,19 +30,9 @@ classdef Curve_seq_obj < handle
             prev_C_patch = nan;
             patches = cell(obj.n_curves*2, 1);
             
-            figure;
             for i = 1:obj.n_curves
                 S_patch = curr.construct_S_patch(f, d, eps_xi_eta, eps_xy);
                 C_patch = curr.construct_C_patch(f, d, eps_xi_eta, eps_xy);
-                
-                [X, Y] = S_patch.Q.xy_mesh;
-                scatter(X(:), Y(:));%,patches{2*i-1}.Q.f_XY(:));
-                hold on;
-                [X, Y] = C_patch.L.xy_mesh;
-                scatter(X(:), Y(:));%,patches{2*i}.L.f_XY);
-                [X, Y] = C_patch.W.xy_mesh;
-                scatter(X(:), Y(:));
-                
 
                 if i ~= 1
                     prev_C_patch.apply_w_W(prev_S_patch)
@@ -59,6 +49,26 @@ classdef Curve_seq_obj < handle
             C_patch.apply_w_W(S_patch);
             C_patch.apply_w_L(patches{1});
         end
+        
+        function plot_geometry(obj, d)
+            curr = obj.first_curve;
+            
+            figure;
+            for i = 1:obj.n_curves
+                S_patch = curr.construct_S_patch(@(x, y) zeros(size(x)), d, nan, nan);
+                C_patch = curr.construct_C_patch(@(x, y) zeros(size(x)), d, nan, nan);
+                
+                [X, Y] = S_patch.Q.xy_mesh;
+                scatter(X(:), Y(:));%,patches{2*i-1}.Q.f_XY(:));
+                hold on;
+                [X, Y] = C_patch.L.xy_mesh;
+                scatter(X(:), Y(:));%,patches{2*i}.L.f_XY);
+                [X, Y] = C_patch.W.xy_mesh;
+                scatter(X(:), Y(:));
+
+                curr = curr.next_curve;
+            end
+        end        
         
         function [boundary_X, boundary_Y] = construct_boundary_mesh(obj, n_r)
             curr = obj.first_curve;
