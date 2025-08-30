@@ -62,17 +62,8 @@ end
 R_coarse = 1;
 
 [A_coarse, b_coarse, n_total, curve_n, start_idx, end_idx] = construct_A_b(R_coarse, u_G, curve_seq_coarse, w, w_prime);
-phi_coarse = A_coarse\b_coarse;
-
-gr_phi_coarse = zeros(n_total, 1);
-curr = curve_seq_coarse.first_curve;
-for i = 1:curve_seq.n_curves
-    ds = 1/curve_n(i);
-    s_mesh = linspace(0, 1-ds, curve_n(i))';
-
-    gr_phi_coarse(start_idx(i):end_idx(i)) = w_prime(s_mesh).*phi_coarse(start_idx(i):end_idx(i));
-    curr = curr.next_curve;
-end
+A_coarse(isnan(A_coarse)) = 0;
+gr_phi_coarse = A_coarse\b_coarse;
 gr_phi_coarse_fft = fftshift(fft(gr_phi_coarse))/n_total;
 
 u_num_mat = zeros(R.n_y, R.n_x);
@@ -232,7 +223,7 @@ function [A, b, n_total, curve_n, start_idx, end_idx] = construct_A_b(R, f, curv
         ds_y = 1/curve_n(i);
         s_mesh_y = linspace(0, 1-ds_y, curve_n(i))';
         theta_mesh_y = w(s_mesh_y);
-        b(start_idx(i):end_idx(i)) = f(curr_y.l_1(theta_mesh_y), curr_y.l_2(theta_mesh_y));
+        b(start_idx(i):end_idx(i)) = w_prime(s_mesh_y).*f(curr_y.l_1(theta_mesh_y), curr_y.l_2(theta_mesh_y));
 
         curr_x = curve_seq.first_curve;
         for j = 1:curve_seq.n_curves
@@ -241,11 +232,11 @@ function [A, b, n_total, curve_n, start_idx, end_idx] = construct_A_b(R, f, curv
             theta_mesh_x = w(s_mesh_x);
             [theta_2, theta_1] = meshgrid(theta_mesh_y, theta_mesh_x);
 
-            A_local = w_prime(s_mesh_y').*K_boundary(theta_1, theta_2, curr_x, curr_y).*sqrt(curr_y.l_1_prime(theta_mesh_y').^2+curr_y.l_2_prime(theta_mesh_y').^2)*ds_y;
+            A_local = w_prime(s_mesh_x).*K_boundary(theta_1, theta_2, curr_x, curr_y).*sqrt(curr_y.l_1_prime(theta_mesh_y').^2+curr_y.l_2_prime(theta_mesh_y').^2)*ds_y;
 
             if i == j
                 msk_diagonals = logical(diag(ones(curve_n(j), 1)));
-                A_local(msk_diagonals) = w_prime(s_mesh_y).*K_boundary_same_point(theta_mesh_y, curr_x).*sqrt(curr_x.l_1_prime(theta_mesh_x).^2+curr_x.l_2_prime(theta_mesh_x).^2)*ds_x + 1/2;
+                A_local(msk_diagonals) = w_prime(s_mesh_x).*K_boundary_same_point(theta_mesh_y, curr_x).*sqrt(curr_x.l_1_prime(theta_mesh_x).^2+curr_x.l_2_prime(theta_mesh_x).^2)*ds_x + 1/2;
             end
 
             A(start_idx(j):end_idx(j), start_idx(i):end_idx(i)) = A_local;
