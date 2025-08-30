@@ -71,6 +71,62 @@ classdef IE_curve_seq_obj < handle
                 curr = curr.next_curve;
             end
         end
+        
+        function [s_patches, c_0_patches, c_1_patches] = construct_interior_patches(obj, curve_param, h_norm, M, eps_xi_eta, eps_xy)
+            
+            % Computing theta thresholds
+            curr = obj.first_curve;
+            for i = 1:obj.n_curves
+                curr_n = curve_param.curve_n(i);
+                next_n = curve_param.curve_n(mod(i, obj.n_curves)+1);
+                curr_v = [curr.l_1(1); curr.l_2(1)] - [curr.l_1(1-1/curr_n); curr.l_2(1-1/curr_n)];
+                next_v = [curr.next_curve.l_1(1/next_n); curr.next_curve.l_2(1/next_n)] - [curr.l_1(1); curr.l_2(1)];
+
+                % C2-type patch means cross product is positive
+                if curr_v(1)*next_v(2) - curr_v(2)*next_v(1) >= 0
+                    curr.C2_corner = true;
+                    [theta_1, theta_2] = compute_normal_intersection(curr, curr.next_curve, M, h_norm, eps_xy, [1; 0]);
+                    curr.c_1_theta_thresh = floor(theta_1 * curr_n) / curr_n;
+                    curr.next_curve.c_0_theta_thresh =  ceil(theta_2 * next_n) / next_n;
+                 % C1-type patch otherwise
+                else
+                    curr.C2_corner = false;
+                    curr.c_1_theta_thresh = 1;
+                    curr.next_curve.corner_0_theta_tresh = 0;
+                end
+                curr = curr.next_curve;
+            end
+            
+            s_patches = cell(obj.n_curves, 1);
+            c_0_patches = cell(obj.n_curves, 1);
+            c_1_patches = cell(obj.n_curves, 1);
+            curr = obj.first_curve;
+            for i = 1:obj.n_curves
+                [s_patches{i}, c_0_patches{i}, c_1_patches{i}] = curr.construct_interior_patch(curve_param, h_norm, M, eps_xi_eta, eps_xy);
+                curr = curr.next_curve;
+            end
+        end
+    end
+end
+
+
+function  [theta_1, theta_2] = compute_normal_intersection(curve_1, curve_2, M, h_norm, eps_xy, initial_guess)
+    nu_norm = @(theta, curve) sqrt(curve.l_1_prime(theta).^2 + curve.l_2_prime(theta).^2);
+    err_guess_x = @(theta_1, theta_2) curve_1.l_1(theta_1) - (M-1)*h_norm*(curve_1.l_2_prime(theta_1)./nu_norm(theta_1, curve_1)) - (curve_2.l_1(theta_2) - (M-1)*h_norm*(curve_2.l_2_prime(theta_2)./nu_norm(theta_2, curve_2)));
+    err_guess_y = @(theta_1, theta_2) curve_1.l_2(theta_1) + (M-1)*h_norm*(curve_1.l_1_prime(theta_1)./nu_norm(theta_1, curve_1)) - (curve_2.l_2(theta_2) + (M-1)*h_norm*(curve_2.l_1_prime(theta_2)./nu_norm(theta_2, curve_2)));
+
+    derr_x_d1 = @(theta_1, theta_2) curve_1.l_1_prime(theta_1)-(M-1)*h_norm*(curve_1.l_2_dprime(theta_1).*nu_norm(theta_1, curve_1).^2-curve_1.l_2_prime(theta_1).*(curve_1.l_2_dprime(theta_1).*curve_1.l_2_prime(theta_1)+curve_1.l_1_dprime(theta_1).*curve_1.l_1_prime(theta_1)))./nu_norm(theta_1, curve_1).^3;
+    derr_y_d1 = @(theta_1, theta_2) curve_1.l_2_prime(theta_1)+(M-1)*h_norm*(curve_1.l_1_dprime(theta_1).*nu_norm(theta_1, curve_1).^2-curve_1.l_1_prime(theta_1).*(curve_1.l_2_dprime(theta_1).*curve_1.l_2_prime(theta_1)+curve_1.l_1_dprime(theta_1).*curve_1.l_1_prime(theta_1)))./nu_norm(theta_1, curve_1).^3;
+    derr_x_d2 = @(theta_1, theta_2) -(curve_2.l_1_prime(theta_2)-(M-1)*h_norm*(curve_2.l_2_dprime(theta_2).*nu_norm(theta_2, curve_2).^2-curve_2.l_2_prime(theta_2).*(curve_2.l_2_dprime(theta_2).*curve_2.l_2_prime(theta_2)+curve_2.l_1_dprime(theta_2).*curve_2.l_1_prime(theta_2)))./nu_norm(theta_2, curve_2).^3);
+    derr_y_d2 = @(theta_1, theta_2) -( curve_2.l_2_prime(theta_2)+(M-1)*h_norm*(curve_2.l_1_dprime(theta_2).*nu_norm(theta_2, curve_2).^2-curve_2.l_1_prime(theta_2).*(curve_2.l_2_dprime(theta_2).*curve_2.l_2_prime(theta_2)+curve_2.l_1_dprime(theta_2).*curve_2.l_1_prime(theta_2)))./nu_norm(theta_2, curve_2).^3);
+
+    err_guess = @(v) [err_guess_x(v(1), v(2)); err_guess_y(v(1), v(2))];
+    J_err = @(v) [derr_x_d1(v(1), v(2)) derr_x_d2(v(1), v(2)); derr_y_d1(v(1), v(2)) derr_y_d2(v(1), v(2))];
+
+    [v_guess, converged] = newton_solve(err_guess, J_err, initial_guess, eps_xy, 100);
+    theta_1 = v_guess(1); theta_2 = v_guess(2);
+    if ~converged
+        warning('Nonconvergence in normal-boundary intersection')
     end
 end
 

@@ -11,6 +11,10 @@ classdef IE_curve_obj < handle
         
         w
         w_prime
+                
+        c_0_theta_thresh
+        c_1_theta_thresh
+        C2_corner
         
         curve_idx
         next_curve
@@ -54,6 +58,41 @@ classdef IE_curve_obj < handle
             theta_mesh = obj.w(s_mesh);
 
             u_num_curve = transpose(obj.K_general([x; y], theta_mesh).*gr_phi(start_idx:end_idx).*sqrt(obj.l_1_prime(theta_mesh).^2+obj.l_2_prime(theta_mesh).^2)) * ones(curve_n, 1) * ds;
+        end
+        
+        function [s_patch, c_0_patch, c_1_patch] = construct_interior_patch(obj, curve_param, h_norm, M, eps_xi_eta, eps_xy)
+            curve_n = curve_param.curve_n(obj.curve_idx);
+            xi_diff = 1;
+            xi_tilde = @(xi) xi;
+
+            nu_norm = @(theta) sqrt(obj.l_1_prime(theta).^2 + obj.l_2_prime(theta).^2);
+
+            M_p_1 = @(xi, eta) obj.l_1(xi_tilde(xi)) - eta.*obj.l_2_prime(xi_tilde(xi))./nu_norm(xi_tilde(xi));
+            M_p_2 = @(xi, eta) obj.l_2(xi_tilde(xi)) + eta.*obj.l_1_prime(xi_tilde(xi))./nu_norm(xi_tilde(xi));
+            M_p = @(xi, eta) [M_p_1(xi, eta), M_p_2(xi, eta)];
+
+            dM_p_1_dxi = @(xi, eta) xi_diff * (obj.l_1_prime(xi_tilde(xi))-eta*(obj.l_2_dprime(xi_tilde(xi)).*nu_norm(xi_tilde(xi)).^2-obj.l_2_prime(xi_tilde(xi)).*(obj.l_2_dprime(xi_tilde(xi)).*obj.l_2_prime(xi_tilde(xi))+obj.l_1_dprime(xi_tilde(xi)).*obj.l_1_prime(xi_tilde(xi))))./nu_norm(xi_tilde(xi)).^3);
+            dM_p_2_dxi = @(xi, eta) xi_diff * (obj.l_2_prime(xi_tilde(xi))+eta*(obj.l_1_dprime(xi_tilde(xi)).*nu_norm(xi_tilde(xi)).^2-obj.l_1_prime(xi_tilde(xi)).*(obj.l_2_dprime(xi_tilde(xi)).*obj.l_2_prime(xi_tilde(xi))+obj.l_1_dprime(xi_tilde(xi)).*obj.l_1_prime(xi_tilde(xi))))./nu_norm(xi_tilde(xi)).^3);
+            dM_p_1_deta = @(xi, eta) -obj.l_2_prime(xi_tilde(xi)) ./ nu_norm(xi_tilde(xi));
+            dM_p_2_deta = @(xi, eta) obj.l_1_prime(xi_tilde(xi)) ./ nu_norm(xi_tilde(xi));
+
+            J = @(v) [dM_p_1_dxi(v(1), v(2)), dM_p_1_deta(v(1), v(2)); dM_p_2_dxi(v(1), v(2)), dM_p_2_deta(v(1), v(2))];
+
+            n_xi_interior = round((obj.c_1_theta_thresh - obj.c_0_theta_thresh)*curve_n) + 1;
+            s_patch = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi_interior, M, obj.c_0_theta_thresh, obj.c_1_theta_thresh, 0, (M-1)*h_norm, zeros(M, n_xi_interior));
+
+            if obj.c_0_theta_thresh ~= 0
+                n_xi_corner =  round(obj.c_0_theta_thresh*curve_n) + 1;
+                c_0_patch = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi_corner, M, 0, obj.c_0_theta_thresh, 0, (M-1)*h_norm, zeros(M, n_xi_corner));
+            else
+                c_0_patch = nan;
+            end
+            if obj.c_1_theta_thresh ~= 1
+                n_xi_corner = round((1-obj.c_1_theta_thresh)*curve_n) + 1;
+                c_1_patch = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi_corner, M, obj.c_1_theta_thresh, 1, 0, (M-1)*h_norm, zeros(M, n_xi_corner));
+            else
+                c_1_patch = nan;
+            end
         end
         
         function K_general_eval = K_general(obj, x, theta)
