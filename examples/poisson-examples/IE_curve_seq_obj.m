@@ -106,6 +106,41 @@ classdef IE_curve_seq_obj < handle
                 curr = curr.next_curve;
             end
         end
+        
+        function int_num = int_num_segment_boundary(obj, curve_param, s_target, curve_target, gr_phi, curve_idx_interval, idx_interval)
+            curr = obj.first_curve;
+            
+            % go to first curve
+            for i = 2:curve_idx_interval(1)
+                curr = curr.next_curve;
+            end
+            
+            local_start_idx = idx_interval(1);
+            
+            % wraps arround
+            if curve_idx_interval(1) > curve_idx_interval(2) || (curve_idx_interval(1) == curve_idx_interval(2) && idx_interval(2) < idx_interval(1))
+                curve_end_idx = curve_idx_interval(2) + obj.n_curves;
+            else
+                curve_end_idx = curve_idx_interval(2);
+            end
+            
+            i = curve_idx_interval(1);
+            int_num = 0;
+            
+            local_end_idx = curve_param.curve_n(curr.curve_idx);
+            while i < curve_end_idx
+                int_num = int_num + curr.int_num_segment_boundary(curve_param, s_target, curve_target, gr_phi, [local_start_idx; local_end_idx]);
+                
+                curr = curr.next_curve;
+                i = i+1;
+                
+                local_start_idx = 1;
+                local_end_idx = curve_param.curve_n(curr.curve_idx);
+            end
+            
+            local_end_idx = idx_interval(2);
+            int_num = int_num + curr.int_num_segment_boundary(curve_param, s_target, curve_target, gr_phi, [local_start_idx; local_end_idx]);
+        end
     end
 end
 
