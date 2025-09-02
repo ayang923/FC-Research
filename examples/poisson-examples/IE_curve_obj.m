@@ -95,13 +95,21 @@ classdef IE_curve_obj < handle
             end
         end
         
-        % Assuming s_target is not within this interval
-        function int_num = int_num_segment_boundary(obj, curve_param, s_target, curve_target, gr_phi, idx_interval)
+        function int_num = int_segment_general(obj, curve_param, x, y, gr_phi, idx_interval)
             [s_mesh, ds] = obj.s_mesh(curve_param.curve_n(obj.curve_idx)); s_mesh = s_mesh(idx_interval(1):idx_interval(2));
             theta_mesh = obj.w(s_mesh);
             
             gr_phi_idxs = curve_param.start_idx(obj.curve_idx) - 1 + (idx_interval(1):idx_interval(2))';
-            int_num = curve_target.w_prime(s_target)*transpose(curve_target.K_boundary(curve_target.w(s_target), theta_mesh, obj).*gr_phi(gr_phi_idxs).*sqrt(obj.l_1_prime(theta_mesh).^2+obj.l_2_prime(theta_mesh).^2)) * ones(length(s_mesh), 1) * ds;
+            int_num = transpose(obj.K_general([x; y], theta_mesh).*gr_phi(gr_phi_idxs).*sqrt(obj.l_1_prime(theta_mesh).^2+obj.l_2_prime(theta_mesh).^2)) * ones(length(s_mesh), 1) * ds;
+        end
+        
+        % Assuming s_target is not within this interval
+        function int_num = int_segment_boundary(obj, curve_param, s_target, curve_target, gr_phi, idx_interval)
+            [s_mesh, ds] = obj.s_mesh(curve_param.curve_n(obj.curve_idx)); s_mesh = s_mesh(idx_interval(1):idx_interval(2));
+            theta_mesh = obj.w(s_mesh);
+            
+            gr_phi_idxs = curve_param.start_idx(obj.curve_idx) - 1 + (idx_interval(1):idx_interval(2))';
+            int_num = transpose(curve_target.K_boundary(curve_target.w(s_target), theta_mesh, obj).*gr_phi(gr_phi_idxs).*sqrt(obj.l_1_prime(theta_mesh).^2+obj.l_2_prime(theta_mesh).^2)) * ones(length(s_mesh), 1) * ds;
         end
         
         function K_general_eval = K_general(obj, x, theta)

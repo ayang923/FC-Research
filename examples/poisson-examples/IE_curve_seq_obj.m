@@ -107,7 +107,7 @@ classdef IE_curve_seq_obj < handle
             end
         end
         
-        function int_num = int_num_segment_boundary(obj, curve_param, s_target, curve_target, gr_phi, curve_idx_interval, idx_interval)
+        function int_num = int_segment_general(obj, curve_param, x, y, gr_phi, curve_idx_interval, idx_interval)
             curr = obj.first_curve;
             
             % go to first curve
@@ -129,7 +129,7 @@ classdef IE_curve_seq_obj < handle
             
             local_end_idx = curve_param.curve_n(curr.curve_idx);
             while i < curve_end_idx
-                int_num = int_num + curr.int_num_segment_boundary(curve_param, s_target, curve_target, gr_phi, [local_start_idx; local_end_idx]);
+                int_num = int_num + curr.int_segment_general(curve_param, x, y, gr_phi, [local_start_idx; local_end_idx]);
                 
                 curr = curr.next_curve;
                 i = i+1;
@@ -139,7 +139,81 @@ classdef IE_curve_seq_obj < handle
             end
             
             local_end_idx = idx_interval(2);
-            int_num = int_num + curr.int_num_segment_boundary(curve_param, s_target, curve_target, gr_phi, [local_start_idx; local_end_idx]);
+            int_num = int_num + curr.int_segment_general(curve_param, x, y, gr_phi, [local_start_idx; local_end_idx]);
+        end
+        
+        function int_num = int_segment_boundary(obj, curve_param, s_target, curve_target, u_G, gr_phi, curve_idx_interval, idx_interval)
+            % checks if target point is in interval
+            target_curve_idx = curve_target.curve_idx;
+            target_idx = s_target/curve_param.curve_n(curve_target.curve_idx) +1;           
+            if  curve_idx_interval(1) < curve_idx_interval(2)
+                if curve_idx_interval(1) < target_curve_idx && target_curve_idx < curve_idx_interval(2)
+                    in_interval = true;
+                elseif target_curve_idx == curve_idx_interval(1) && target_curve_idx >= idx_interval(1)
+                    in_interval = true;
+                elseif target_curve_idx == curve_idx_interval(2) && target_curve_idx <= idx_interval(2)
+                    in_interval = true;
+                else
+                    in_interval = false;
+                end
+            elseif curve_idx_interval(1) > curve_idx_interval(2)
+                if curve_idx_interval(1) > target_curve_idx || target_curve_idx < curve_idx_interval(2)
+                    in_interval = true;
+                elseif target_curve_idx == curve_idx_interval(1) && target_curve_idx >= idx_interval(1)
+                    in_interval = true;
+                elseif target_curve_idx == curve_idx_interval(2) && target_curve_idx <= idx_interval(2)
+                    in_interval = true;
+                else
+                    in_interval = false;
+                end
+            else
+                if idx_interval(1) <= target_idx && target_idx <= idx_interval(2)
+                    in_interval = true;
+                else
+                    in_interval = false;
+                end
+            end
+            
+            if in_interval
+                int_num = u_G(curve_target.l_1(curve_target.w(s_target)), curve_target.l_2(curve_target.w(s_target))) - int_segment_boundary_helper(obj, curve_param, s_target, curve_target, gr_phi, [curve_idx_interval(2); curve_idx_interval(1)], [idx_interval(2)+1, idx_interval(1)-1]);
+            else
+                int_num = int_segment_boundary_helper(obj, curve_param, s_target, curve_target, gr_phi, curve_idx_interval, idx_interval);
+            end
+        end
+        
+        function int_num = int_segment_boundary_helper(obj, curve_param, s_target, curve_target, gr_phi, curve_idx_interval, idx_interval)
+            curr = obj.first_curve;
+            
+            % go to first curve
+            for i = 2:curve_idx_interval(1)
+                curr = curr.next_curve;
+            end
+            
+            local_start_idx = idx_interval(1);
+            
+            % wraps arround
+            if curve_idx_interval(1) > curve_idx_interval(2) || (curve_idx_interval(1) == curve_idx_interval(2) && idx_interval(2) < idx_interval(1))
+                curve_end_idx = curve_idx_interval(2) + obj.n_curves;
+            else
+                curve_end_idx = curve_idx_interval(2);
+            end
+            
+            i = curve_idx_interval(1);
+            int_num = 0;
+            
+            local_end_idx = curve_param.curve_n(curr.curve_idx);
+            while i < curve_end_idx
+                int_num = int_num + curr.int_segment_boundary(curve_param, s_target, curve_target, gr_phi, [local_start_idx; local_end_idx]);
+                
+                curr = curr.next_curve;
+                i = i+1;
+                
+                local_start_idx = 1;
+                local_end_idx = curve_param.curve_n(curr.curve_idx);
+            end
+            
+            local_end_idx = idx_interval(2);
+            int_num = int_num + curr.int_segment_boundary(curve_param, s_target, curve_target, gr_phi, [local_start_idx; local_end_idx]);
         end
     end
 end
