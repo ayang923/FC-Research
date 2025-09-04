@@ -110,8 +110,6 @@ classdef IE_curve_obj < handle
             
             gr_phi_idxs = curve_param.start_idx(obj.curve_idx) - 1 + (idx_interval(1):idx_interval(2))';
             int_num = transpose(curve_target.K_boundary(theta_target, theta_mesh, obj).*gr_phi(gr_phi_idxs).*sqrt(obj.l_1_prime(theta_mesh).^2+obj.l_2_prime(theta_mesh).^2)) * ones(length(s_mesh), 1) * ds;
-            figure;
-            plot(curve_target.K_boundary(theta_target, theta_mesh, obj).*gr_phi(gr_phi_idxs).*sqrt(obj.l_1_prime(theta_mesh).^2+obj.l_2_prime(theta_mesh).^2))
         end
         
         function [gr_phi_U] = c_0_apply_POU(obj, curve_param, U, gr_phi)

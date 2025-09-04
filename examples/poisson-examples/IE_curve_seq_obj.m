@@ -176,6 +176,19 @@ classdef IE_curve_seq_obj < handle
             local_end_idx = idx_interval(2);
             int_num = int_num + curr.int_segment_boundary(curve_param, theta_target, curve_target, gr_phi, [local_start_idx; local_end_idx]);
         end
+        
+        function [interp_int_seg] = interp_int_seg(obj, xi, eta, patch, target_curve, curve_param, gr_phi, curve_idx_interval, idx_interval, u_G, gr_phi_C, curve_idx_C, idx_interval_C)            
+            eta_mesh = patch.eta_mesh;
+            
+            interpol_nodes = patch.M_p(xi, eta_mesh);
+            interpol_vals = zeros(size(eta_mesh));
+            for i = 2:length(interpol_vals)
+                interpol_vals(i) = obj.int_segment_general(curve_param, interpol_nodes(i, 1), interpol_nodes(i, 2), gr_phi, curve_idx_interval, idx_interval);
+            end
+            interpol_vals(1) = u_G(interpol_nodes(1, 1), interpol_nodes(1, 2)) - obj.int_segment_boundary(curve_param, xi, target_curve, gr_phi_C, curve_idx_C, idx_interval_C);
+            
+            interp_int_seg = barylag([eta_mesh, interpol_vals], eta);
+        end
     end
 end
 
