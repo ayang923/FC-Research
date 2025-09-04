@@ -78,17 +78,17 @@ classdef IE_curve_obj < handle
 
             J = @(v) [dM_p_1_dxi(v(1), v(2)), dM_p_1_deta(v(1), v(2)); dM_p_2_dxi(v(1), v(2)), dM_p_2_deta(v(1), v(2))];
 
-            n_xi_interior = round((obj.c_1_theta_thresh - obj.c_0_theta_thresh)*curve_n) + 1;
+            n_xi_interior = max(round((obj.c_1_theta_thresh - obj.c_0_theta_thresh)*curve_n) + 1, M);
             s_patch = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi_interior, M, obj.c_0_theta_thresh, obj.c_1_theta_thresh, 0, (M-1)*h_norm, zeros(M, n_xi_interior));
 
             if obj.c_0_theta_thresh ~= 0
-                n_xi_corner =  round(obj.c_0_theta_thresh*curve_n) + 1;
+                n_xi_corner =  max(round(obj.c_0_theta_thresh*curve_n) + 1, M);
                 c_0_patch = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi_corner, M, 0, obj.c_0_theta_thresh, 0, (M-1)*h_norm, zeros(M, n_xi_corner));
             else
                 c_0_patch = nan;
             end
             if obj.c_1_theta_thresh ~= 1
-                n_xi_corner = round((1-obj.c_1_theta_thresh)*curve_n) + 1;
+                n_xi_corner = max(round((1-obj.c_1_theta_thresh)*curve_n) + 1, M);
                 c_1_patch = Q_patch_obj(M_p, J, eps_xi_eta, eps_xy, n_xi_corner, M, obj.c_1_theta_thresh, 1, 0, (M-1)*h_norm, zeros(M, n_xi_corner));
             else
                 c_1_patch = nan;
@@ -98,20 +98,44 @@ classdef IE_curve_obj < handle
         function int_num = int_segment_general(obj, curve_param, x, y, gr_phi, idx_interval)
             [s_mesh, ds] = obj.s_mesh(curve_param.curve_n(obj.curve_idx)); s_mesh = s_mesh(idx_interval(1):idx_interval(2));
             theta_mesh = obj.w(s_mesh);
-            
+
             gr_phi_idxs = curve_param.start_idx(obj.curve_idx) - 1 + (idx_interval(1):idx_interval(2))';
             int_num = transpose(obj.K_general([x; y], theta_mesh).*gr_phi(gr_phi_idxs).*sqrt(obj.l_1_prime(theta_mesh).^2+obj.l_2_prime(theta_mesh).^2)) * ones(length(s_mesh), 1) * ds;
         end
         
         % Assuming s_target is not within this interval
-        function int_num = int_segment_boundary(obj, curve_param, s_target, curve_target, gr_phi, idx_interval)
+        function int_num = int_segment_boundary(obj, curve_param, theta_target, curve_target, gr_phi, idx_interval)
             [s_mesh, ds] = obj.s_mesh(curve_param.curve_n(obj.curve_idx)); s_mesh = s_mesh(idx_interval(1):idx_interval(2));
             theta_mesh = obj.w(s_mesh);
             
             gr_phi_idxs = curve_param.start_idx(obj.curve_idx) - 1 + (idx_interval(1):idx_interval(2))';
-            int_num = transpose(curve_target.K_boundary(curve_target.w(s_target), theta_mesh, obj).*gr_phi(gr_phi_idxs).*sqrt(obj.l_1_prime(theta_mesh).^2+obj.l_2_prime(theta_mesh).^2)) * ones(length(s_mesh), 1) * ds;
+            int_num = transpose(curve_target.K_boundary(theta_target, theta_mesh, obj).*gr_phi(gr_phi_idxs).*sqrt(obj.l_1_prime(theta_mesh).^2+obj.l_2_prime(theta_mesh).^2)) * ones(length(s_mesh), 1) * ds;
+            figure;
+            plot(curve_target.K_boundary(theta_target, theta_mesh, obj).*gr_phi(gr_phi_idxs).*sqrt(obj.l_1_prime(theta_mesh).^2+obj.l_2_prime(theta_mesh).^2))
         end
         
+        function [gr_phi_U] = c_0_apply_POU(obj, curve_param, U, gr_phi)
+            theta_mesh = obj.theta_mesh(curve_param.curve_n(obj.curve_idx));
+            U_start_idx = sum(theta_mesh < 2*obj.c_0_theta_thresh) + 1;
+            U_end_idx = U_start_idx + length(U) - 1;
+            curve_param.U_c_0_intervals(obj.curve_idx, :) = [U_start_idx, U_end_idx];
+            
+            gr_phi_start_idx = curve_param.start_idx(obj.curve_idx) + U_start_idx - 1;
+            gr_phi_end_idx = curve_param.start_idx(obj.curve_idx) + U_end_idx - 1;     
+            gr_phi_U = gr_phi; gr_phi_U(gr_phi_start_idx:gr_phi_end_idx) = gr_phi_U(gr_phi_start_idx:gr_phi_end_idx) .* (1-U);
+        end
+        
+        function [gr_phi_U] = c_1_apply_POU(obj, curve_param, U, gr_phi)
+            theta_mesh = obj.theta_mesh(curve_param.curve_n(obj.curve_idx));
+            U_end_idx = sum(theta_mesh < 2*obj.c_1_theta_thresh-1);
+            U_start_idx = U_end_idx - length(U) + 1;
+            curve_param.U_c_1_intervals(obj.curve_idx, :) = [U_start_idx, U_end_idx];
+            
+            gr_phi_start_idx = curve_param.start_idx(obj.curve_idx) + U_start_idx - 1;
+            gr_phi_end_idx = curve_param.start_idx(obj.curve_idx) + U_end_idx - 1;     
+            gr_phi_U = gr_phi; gr_phi_U(gr_phi_start_idx:gr_phi_end_idx) = gr_phi_U(gr_phi_start_idx:gr_phi_end_idx) .* U;
+        end
+
         function K_general_eval = K_general(obj, x, theta)
             K_general_eval = -1 / (2 * pi) * ( ...
                 (x(1) - obj.l_1(theta)) .* obj.l_2_prime(theta) - ...
