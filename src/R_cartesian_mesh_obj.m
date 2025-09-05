@@ -139,10 +139,10 @@ classdef R_cartesian_mesh_obj < handle
         
         function [f_xy, in_range] = locally_compute(obj, x, y, M)
             
-            if x >= obj.x_end || x <= obj.x_start || y >= obj.y_end || y <=obj.y_start
+            if x > obj.x_end || x < obj.x_start || y > obj.y_end || y < obj.y_start
                 f_xy = nan;
                 in_range = false;
-                disp('issue');
+                warning('(x, y) not in range');
                 return
             end
             
