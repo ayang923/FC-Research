@@ -12,7 +12,7 @@ end
 curve_param_rho1 = curve_param_obj(curve_n_rho1);
 
 % Constructs U
-n_POU = 50;
+n_POU = 200;
 U = construct_POU(n_POU);
 
 %% Constructs IE curve seq obj
@@ -22,7 +22,7 @@ IE_curve_seq = IE_curve_seq_obj(curve_seq, p);
 gr_phi_rho1 = A_rho1 \ b_rho1;
 gr_phi_fft_rho1 = fftshift(fft(gr_phi_rho1))/curve_param_rho1.n_total;
 
-[s_patches, c_0_patches, c_1_patches] = IE_curve_seq.construct_interior_patches(curve_param_rho1, R.h/rho_intp, M, eps_xi_eta, eps_xy);
+[s_patches, c_0_patches, c_1_patches] = IE_curve_seq.construct_interior_patches(curve_param_rho1, R.h/2, M, eps_xi_eta, eps_xy);
 [well_interior_msk, s_patch_msks, c_0_patch_msks, c_1_patch_msks] = gen_R_msks(R, rho, s_patches, c_0_patches, c_1_patches);
 
 %% Fills in points that are well within the domain
@@ -106,13 +106,6 @@ for i = 1:curve_seq.n_curves
     end
 end
 
-err_msk = well_interior_msk;
-for i = 1:curve_seq.n_curves
-    err_msk = err_msk | s_patch_msks{i};
-end
-
-
-
 %% Evaluating points in corner patches using most refined gr_phi
 
 curr = IE_curve_seq.first_curve;
@@ -159,12 +152,10 @@ for curve_idx = 1:IE_curve_seq.n_curves
 
         [R_c_0_intp_idxs, R_c_1_intp_idxs, R_c_0_1_intp_m_0_idxs, R_c_0_1_intp_m_1_idxs, R_no_intp_idxs] = construct_R_c_idxs(R, c_0_patch_msk, c_1_patch_msk, h_eta_0, h_eta_1, P_eta_0, P_eta_1);
 
-        err_msk(R_no_intp_idxs) = true;
         for i = 1:length(R_no_intp_idxs)
             u_num_mat(R_no_intp_idxs(i)) = IE_curve_seq.u_num(R.R_X(R_no_intp_idxs(i)), R.R_Y(R_no_intp_idxs(i)), curve_param_fine, gr_phi_fine);
         end
 
-        err_msk(R_c_0_intp_idxs(:, 1)) = true;
         for i = 1:size(R_c_0_intp_idxs, 1)
             u_num_mat(R_c_0_intp_idxs(i, 1)) = IE_curve_seq.interp_int_seg( ...
                 P_xi_0(R_c_0_intp_idxs(i, 2)), ...
@@ -191,7 +182,6 @@ for curve_idx = 1:IE_curve_seq.n_curves
                 );
         end
 
-        err_msk(R_c_1_intp_idxs(:, 1)) = true;
         for i = 1:size(R_c_1_intp_idxs, 1)
             u_num_mat(R_c_1_intp_idxs(i, 1)) = IE_curve_seq.interp_int_seg( ...
                 P_xi_1(R_c_1_intp_idxs(i, 2)), ...
