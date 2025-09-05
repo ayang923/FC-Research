@@ -18,7 +18,7 @@ IE_curve_seq = IE_curve_seq_obj(curve_seq, p);
 gr_phi_rho1 = A_rho1 \ b_rho1;
 gr_phi_fft_rho1 = fftshift(fft(gr_phi_rho1))/curve_param_rho1.n_total;
 
-[s_patches, c_0_patches, c_1_patches] = IE_curve_seq.construct_interior_patches(curve_param_rho1, R.h/2, M, eps_xi_eta, eps_xy);
+[s_patches, c_0_patches, c_1_patches] = IE_curve_seq.construct_interior_patches(curve_param_rho1, R.h, M, eps_xi_eta, eps_xy);
 [well_interior_msk, s_patch_msks, c_0_patch_msks, c_1_patch_msks] = gen_R_msks(R, rho, s_patches, c_0_patches, c_1_patches);
 
 %% Fills in points that are well within the domain
@@ -100,7 +100,11 @@ for i = 1:curve_seq.n_curves
     [P_xi_s, P_eta_s] = R_xi_eta_inversion(R, s_patch, in_patch);
 
     for idx = 1:length(R_s_idxs)
-        u_num_mat(R_s_idxs(idx)) = s_patch.locally_compute(P_xi_s(idx), P_eta_s(idx), M);
+        if s_patch.in_patch(P_xi_s(idx), P_eta_s(idx))
+            u_num_mat(R_s_idxs(idx)) = s_patch.locally_compute(P_xi_s(idx), P_eta_s(idx), M);
+        else
+            s_patch_msks{i}(R_s_idxs(idx)) = false;
+        end
     end
 end
 
@@ -128,11 +132,17 @@ for curve_idx = 1:IE_curve_seq.n_curves
         [~, P_eta_1] = R_xi_eta_inversion(R, c_1_patch, c_1_patch_msk);
 
         [R_bnd_idxs_c, R_n_bnd_idxs_c] = construct_R_c_idxs(R, c_0_patch_msk, c_1_patch_msk, h_eta_0, h_eta_1, P_eta_0, P_eta_1);
-        R_bnd_idxs_cell{curve_idx} = R_bnd_idxs_c;
-        for i = 1:length(R_n_bnd_idxs_c)
-            u_num_mat(R_n_bnd_idxs_c(i)) = IE_curve_seq.u_num(R.R_X(R_n_bnd_idxs_c(i)), R.R_Y(R_n_bnd_idxs_c(i)), curve_param_fine, gr_phi_fine);
-        end
     else
+        C1_corner = [curr.l_1(1); curr.l_2(1)];
+        
+        R_bnd_idxs_c_msk = R.in_interior & ((C1_corner(1)-R.R_X).^2 + (C1_corner(2)-R.R_Y).^2 < (R.h).^2) & ~(s_patch_msks{curve_idx} | s_patch_msks{next.curve_idx});
+        R_bnd_idxs_c = [R.R_idxs(R_bnd_idxs_c_msk), sqrt((C1_corner(1)-R.R_X(R_bnd_idxs_c_msk)).^2 + (C1_corner(2)-R.R_Y(R_bnd_idxs_c_msk)).^2)];
+        R_n_bnd_idxs_c = R.R_idxs(R.in_interior & ~R_bnd_idxs_c_msk & ~well_interior_msk & ~(s_patch_msks{curve_idx} | s_patch_msks{next.curve_idx}));
+    end
+    
+    R_bnd_idxs_cell{curve_idx} = R_bnd_idxs_c;
+     for i = 1:length(R_n_bnd_idxs_c)
+        u_num_mat(R_n_bnd_idxs_c(i)) = IE_curve_seq.u_num(R.R_X(R_n_bnd_idxs_c(i)), R.R_Y(R_n_bnd_idxs_c(i)), curve_param_fine, gr_phi_fine);
     end
     curr = curr.next_curve;
 end
@@ -198,16 +208,27 @@ function [well_interior_msk, s_patch_msks, c_0_patch_msks, c_1_patch_msks] = gen
         well_interior_msk = well_interior_msk & ~in_patch;
 
         c_0_patch = c_0_patches{i};
-        [bound_X, bound_Y] = c_0_patch.boundary_mesh_xy(n_r, false);
-        in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
-        c_0_patch_msks{i} = in_patch;
-        well_interior_msk = well_interior_msk & ~in_patch;
-
         c_1_patch = c_1_patches{i};
-        [bound_X, bound_Y] = c_1_patch.boundary_mesh_xy(n_r, false);
-        in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
-        c_1_patch_msks{i} = in_patch;
-        well_interior_msk = well_interior_msk & ~in_patch;
+        
+        if isobject(c_0_patch) && isobject(c_1_patch)
+            [bound_X, bound_Y] = c_0_patch.boundary_mesh_xy(n_r, false);
+            in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
+            c_0_patch_msks{i} = in_patch;
+            well_interior_msk = well_interior_msk & ~in_patch;
+
+
+            [bound_X, bound_Y] = c_1_patch.boundary_mesh_xy(n_r, false);
+            in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
+            c_1_patch_msks{i} = in_patch;
+            well_interior_msk = well_interior_msk & ~in_patch;
+        else
+            M = s_patches{i}.n_eta;
+            C1_corner = s_patches{i}.M_p(1, 0)';
+            well_interior_msk = well_interior_msk & ((C1_corner(1)-R.R_X).^2 + (C1_corner(2)-R.R_Y).^2 > (M*R.h).^2);
+                
+            c_0_patch_msks{i} = nan;
+            c_1_patch_msks{i} = nan;
+        end
     end
 end
 
