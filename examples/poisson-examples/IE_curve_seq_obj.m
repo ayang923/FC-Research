@@ -61,6 +61,7 @@ classdef IE_curve_seq_obj < handle
 
                 curr_y = curr_y.next_curve;
             end
+            A(isnan(A)) = 0;
         end
 
         function u_num = u_num(obj, x, y, curve_param, gr_phi)
