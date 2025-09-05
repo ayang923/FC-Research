@@ -1,4 +1,4 @@
-function [u_num_mat] = laplace_solver_new(R, curve_seq, u_G, cfac, p, M, int_eps, eps_xi_eta, eps_xy, rho, rho_intp)
+function [u_num_mat] = laplace_solver_new(R, curve_seq, u_G, cfac, p, M, int_eps, eps_xi_eta, eps_xy, rho)
 %LAPLACE_SOLVER_NEW Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -10,10 +10,6 @@ for i = 1:curve_seq.n_curves
     curr = curr.next_curve;
 end
 curve_param_rho1 = curve_param_obj(curve_n_rho1);
-
-% Constructs U
-n_POU = 200;
-U = construct_POU(n_POU);
 
 %% Constructs IE curve seq obj
 
@@ -29,6 +25,7 @@ gr_phi_fft_rho1 = fftshift(fft(gr_phi_rho1))/curve_param_rho1.n_total;
 u_num_mat = zeros(size(R.f_R));
 u_num_mat_fine = zeros(size(R.f_R));
 
+disp('interior')
 for idx = R.R_idxs(well_interior_msk)'
     u_num_mat(idx) = IE_curve_seq.u_num(R.R_X(idx), R.R_Y(idx), curve_param_rho1, gr_phi_rho1);
 end
@@ -60,6 +57,7 @@ curve_param_coarse = curve_param_fine;
 rho_fine_IE = rho_coarse_IE + 1;
 [gr_phi_fine, curve_param_fine] = refine_gr_phi(curve_param_rho1, rho_fine_IE, gr_phi_fft_rho1);
 
+disp('s patches')
 % excludes boundary
 for eta_idx = M:-1:2
     for i = 1:curve_seq.n_curves
@@ -71,11 +69,11 @@ for eta_idx = M:-1:2
             u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
             
             while abs(u_num_coarse_val - u_num_fine_val) > int_eps
-                rho_coarse_IE = rho_fine_IE
+                rho_coarse_IE = rho_fine_IE;
                 curve_param_coarse = curve_param_fine;
                 gr_phi_coarse = gr_phi_fine;
 
-                rho_fine_IE = rho_coarse_IE + 1;
+                rho_fine_IE = rho_coarse_IE + 1
                 [gr_phi_fine, curve_param_fine] = refine_gr_phi(curve_param_rho1, rho_fine_IE, gr_phi_fft_rho1);
 
                 u_num_coarse_val = u_num_fine_val;
@@ -106,9 +104,11 @@ for i = 1:curve_seq.n_curves
     end
 end
 
-%% Evaluating points in corner patches using most refined gr_phi
-
+%% Evaluating points in corner patches using refinements
 curr = IE_curve_seq.first_curve;
+
+disp('corner')
+R_bnd_idxs_cell = cell(IE_curve_seq.n_curves);
 for curve_idx = 1:IE_curve_seq.n_curves
     next = curr.next_curve;
     
@@ -118,140 +118,61 @@ for curve_idx = 1:IE_curve_seq.n_curves
         c_1_patch = c_1_patches{curve_idx};
         c_0_patch = c_0_patches{next.curve_idx};
 
-        % computes windowed graded phis and the respective integration
-        % intervals, these are the same for all of the points in the corner
-        % patch corresponding to the same corner
-        gr_phi_U_c_0 =  next.c_0_apply_POU(curve_param_fine, U, gr_phi_fine);
-        U_c_0_idx_seg = [1, curve_param_fine.U_c_0_intervals(next.curve_idx, 2)-1];
-        U_c_0_curve_seg = [next.curve_idx, next.curve_idx];
-
-        gr_phi_U_c_0_C = apply_POU(gr_phi_fine, U, curve_param_fine.U_c_0_intervals(next.curve_idx, :));
-        U_c_0_C_idx_seg = [curve_param_fine.U_c_0_intervals(next.curve_idx, 1), curve_param_fine.curve_n(curve_idx)];
-        U_c_0_C_curve_seg = [next.curve_idx, curve_idx];
-
-        gr_phi_U_c_1 = curr.c_1_apply_POU(curve_param_fine, U, gr_phi_fine);
-        U_c_1_idx_seg = [curve_param_fine.U_c_1_intervals(curve_idx, 1), curve_param_fine.curve_n(curve_idx)];
-        U_c_1_curve_seg = [curr.curve_idx, curr.curve_idx];
-
-        gr_phi_U_c_1_C = apply_POU(gr_phi_fine, 1-U, curve_param_fine.U_c_1_intervals(curve_idx, :));
-        U_c_1_C_idx_seg = [1, curve_param_fine.U_c_1_intervals(next.curve_idx, 2)-1];
-        U_c_1_C_curve_seg = [next.curve_idx, curve_idx];
-
-        gr_phi_U_c_0_1_C = apply_POU(gr_phi_U_c_1_C, U, curve_param_fine.U_c_0_intervals(next.curve_idx, :));
-        U_c_0_1_C_idx_seg = [curve_param_fine.U_c_0_intervals(next.curve_idx, 1), curve_param_fine.U_c_1_intervals(curve_idx, 2)-1];
-        U_c_0_1_C_curve_seg = [next.curve_idx, curve_idx];
-
         % Computing function values of cartesian points in c_0 and c_1 patches
         c_0_patch_msk = c_0_patch_msks{next.curve_idx};
         c_1_patch_msk = c_1_patch_msks{curve_idx};
 
         [~, h_eta_0] = c_0_patch.h_mesh;
         [~, h_eta_1] = c_1_patch.h_mesh;
-        [P_xi_0, P_eta_0] = R_xi_eta_inversion(R, c_0_patch, c_0_patch_msk);
-        [P_xi_1, P_eta_1] = R_xi_eta_inversion(R, c_1_patch, c_1_patch_msk);
+        [~, P_eta_0] = R_xi_eta_inversion(R, c_0_patch, c_0_patch_msk);
+        [~, P_eta_1] = R_xi_eta_inversion(R, c_1_patch, c_1_patch_msk);
 
-        [R_c_0_intp_idxs, R_c_1_intp_idxs, R_c_0_1_intp_m_0_idxs, R_c_0_1_intp_m_1_idxs, R_no_intp_idxs] = construct_R_c_idxs(R, c_0_patch_msk, c_1_patch_msk, h_eta_0, h_eta_1, P_eta_0, P_eta_1);
-
-        for i = 1:length(R_no_intp_idxs)
-            u_num_mat(R_no_intp_idxs(i)) = IE_curve_seq.u_num(R.R_X(R_no_intp_idxs(i)), R.R_Y(R_no_intp_idxs(i)), curve_param_fine, gr_phi_fine);
-        end
-
-        for i = 1:size(R_c_0_intp_idxs, 1)
-            u_num_mat(R_c_0_intp_idxs(i, 1)) = IE_curve_seq.interp_int_seg( ...
-                P_xi_0(R_c_0_intp_idxs(i, 2)), ...
-                P_eta_0(R_c_0_intp_idxs(i, 2)), ...
-                c_0_patch, ...
-                next, ...
-                curve_param_fine, ...
-                gr_phi_U_c_0, ...
-                U_c_0_curve_seg, ...
-                U_c_0_idx_seg, ...
-                u_G, ...
-                gr_phi_U_c_0_C, ...
-                U_c_0_C_curve_seg, ...
-                U_c_0_C_idx_seg ...
-            );
-            u_num_mat(R_c_0_intp_idxs(i, 1)) = u_num_mat(R_c_0_intp_idxs(i, 1)) + ...
-                IE_curve_seq.int_segment_general( ...
-                    curve_param_fine, ...
-                    R.R_X(R_c_0_intp_idxs(i, 1)), ...
-                    R.R_Y(R_c_0_intp_idxs(i, 1)), ...
-                    gr_phi_U_c_0_C, ...
-                    U_c_0_C_curve_seg, ...
-                    U_c_0_C_idx_seg ...
-                );
-        end
-
-        for i = 1:size(R_c_1_intp_idxs, 1)
-            u_num_mat(R_c_1_intp_idxs(i, 1)) = IE_curve_seq.interp_int_seg( ...
-                P_xi_1(R_c_1_intp_idxs(i, 2)), ...
-                P_eta_1(R_c_1_intp_idxs(i, 2)), ...
-                c_1_patch, ...
-                curr, ...
-                curve_param_fine, ...
-                gr_phi_U_c_1, ...
-                U_c_1_curve_seg, ...
-                U_c_1_idx_seg, ...
-                u_G, ...
-                gr_phi_U_c_1_C, ...
-                U_c_1_C_curve_seg, ...
-                U_c_1_C_idx_seg ...
-            );
-            u_num_mat(R_c_1_intp_idxs(i, 1)) = u_num_mat(R_c_1_intp_idxs(i, 1)) + ...
-                IE_curve_seq.int_segment_general( ...
-                    curve_param_fine, ...
-                    R.R_X(R_c_1_intp_idxs(i, 1)), ...
-                    R.R_Y(R_c_1_intp_idxs(i, 1)), ...
-                    gr_phi_U_c_1_C, ...
-                    U_c_1_C_curve_seg, ...
-                    U_c_1_C_idx_seg ...
-                );
-        end
-
-        for i = 1:size(R_c_0_1_intp_m_0_idxs, 1)
-            u_num_mat(R_c_0_1_intp_m_0_idxs(i, 1)) = IE_curve_seq.interp_int_seg( ...
-                P_xi_0(R_c_0_1_intp_m_0_idxs(i, 2)), ...
-                P_eta_0(R_c_0_1_intp_m_0_idxs(i, 2)), ...
-                c_0_patch, ...
-                next, ...
-                curve_param_fine, ...
-                gr_phi_U_c_0, ...
-                U_c_0_curve_seg, ...
-                U_c_0_idx_seg, ...
-                u_G, ...
-                gr_phi_U_c_0_C, ...
-                U_c_0_C_curve_seg, ...
-                U_c_0_C_idx_seg ...
-            );
-            u_num_mat(R_c_0_1_intp_m_1_idxs(i, 1)) = u_num_mat(R_c_0_1_intp_m_1_idxs(i, 1)) +...
-                IE_curve_seq.interp_int_seg( ...
-                P_xi_1(R_c_0_1_intp_m_1_idxs(i, 2)), ...
-                P_eta_1(R_c_0_1_intp_m_1_idxs(i, 2)), ...
-                c_1_patch, ...
-                curr, ...
-                curve_param_fine, ...
-                gr_phi_U_c_1, ...
-                U_c_1_curve_seg, ...
-                U_c_1_idx_seg, ...
-                u_G, ...
-                gr_phi_U_c_1_C, ...
-                U_c_1_C_curve_seg, ...
-                U_c_1_C_idx_seg ...
-            );
-            u_num_mat(R_c_0_1_intp_m_0_idxs(i, 1)) = u_num_mat(R_c_0_1_intp_m_0_idxs(i, 1)) + ...
-                IE_curve_seq.int_segment_general( ...
-                    curve_param_fine, ...
-                    R.R_X(R_c_0_1_intp_m_0_idxs(i, 1)), ...
-                    R.R_Y(R_c_0_1_intp_m_0_idxs(i, 1)), ...
-                    gr_phi_U_c_0_1_C, ...
-                    U_c_0_1_C_curve_seg, ...
-                    U_c_0_1_C_idx_seg ...
-                );
+        [R_bnd_idxs_c, R_n_bnd_idxs_c] = construct_R_c_idxs(R, c_0_patch_msk, c_1_patch_msk, h_eta_0, h_eta_1, P_eta_0, P_eta_1);
+        R_bnd_idxs_cell{curve_idx} = R_bnd_idxs_c;
+        for i = 1:length(R_n_bnd_idxs_c)
+            u_num_mat(R_n_bnd_idxs_c(i)) = IE_curve_seq.u_num(R.R_X(R_n_bnd_idxs_c(i)), R.R_Y(R_n_bnd_idxs_c(i)), curve_param_fine, gr_phi_fine);
         end
     else
     end
     curr = curr.next_curve;
 end
+
+total_bnd_idxs = 0;
+for curve_idx = 1:IE_curve_seq.n_curves
+    total_bnd_idxs = total_bnd_idxs + size(R_bnd_idxs_cell{curve_idx}, 1);
+end
+
+R_bnd_idxs = zeros(total_bnd_idxs, 2);
+curr_idx = 1;
+for curve_idx = 1:IE_curve_seq.n_curves
+    R_bnd_idxs_c = R_bnd_idxs_cell{curve_idx};
+    R_bnd_idxs(curr_idx:curr_idx + size(R_bnd_idxs_c, 1) - 1, :) = R_bnd_idxs_c;
+    curr_idx = curr_idx + size(R_bnd_idxs_c, 1);
+end
+
+% sorts boundary idxs in order of distance from boundary
+R_bnd_idxs = sortrows(R_bnd_idxs, -2);
+
+for i = 1:size(R_bnd_idxs, 1)
+    x = R.R_X(R_bnd_idxs(i)); y = R.R_Y(R_bnd_idxs(i));
+
+    u_num_coarse_val = IE_curve_seq.u_num(x, y, curve_param_coarse, gr_phi_coarse);
+    u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
+
+    while abs(u_num_coarse_val - u_num_fine_val) > int_eps
+        rho_coarse_IE = rho_fine_IE;
+        curve_param_coarse = curve_param_fine;
+        gr_phi_coarse = gr_phi_fine;
+
+        rho_fine_IE = rho_coarse_IE + 1
+        [gr_phi_fine, curve_param_fine] = refine_gr_phi(curve_param_rho1, rho_fine_IE, gr_phi_fft_rho1);
+
+        u_num_coarse_val = u_num_fine_val;
+        u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
+    end
+    u_num_mat(R_bnd_idxs(i)) = u_num_coarse_val;
+end
+
 u_num_mat(~R.in_interior) = nan;
 max(u_num_mat(:) - u_G(R.R_X(:), R.R_Y(:)))
 end
@@ -291,35 +212,17 @@ function [well_interior_msk, s_patch_msks, c_0_patch_msks, c_1_patch_msks] = gen
     end
 end
 
-function U = construct_POU(n_POU)
-    w_1D = @(x) erfc(6*(-2*x+1))/2;
-    w_1 = @(s) w_1D(s);
-    w_2 = @(s) w_1D(-s+1);
-    U_mesh = linspace(0, 1, n_POU)';
-    
-    U = w_1(U_mesh)./(w_1(U_mesh)+w_2(U_mesh));
-end
-
-function gr_phi_POU = apply_POU(gr_phi, U, POU_interval)
-gr_phi_POU = gr_phi; gr_phi_POU(POU_interval(1):POU_interval(2)) = gr_phi_POU(POU_interval(1):POU_interval(2)) .* U;
-end
-
-function [R_c_0_intp_idxs, R_c_1_intp_idxs, R_c_0_1_intp_m_0_idxs, R_c_0_1_intp_m_1_idxs, R_no_intp_idxs] = construct_R_c_idxs(R, c_0_patch_msk, c_1_patch_msk, h_eta_0, h_eta_1, P_eta_0, P_eta_1)
-    c_0_all_idxs = (1:sum(c_0_patch_msk, 'all'))';
-    c_1_all_idxs = (1:sum(c_1_patch_msk, 'all'))';
+function [R_bnd_idxs, R_n_bnd_idxs] = construct_R_c_idxs(R, c_0_patch_msk, c_1_patch_msk, h_eta_0, h_eta_1, P_eta_0, P_eta_1)
     R_c_0_all_idxs = R.R_idxs(c_0_patch_msk);
     R_c_1_all_idxs = R.R_idxs(c_1_patch_msk);
     
-    intp_c_0_all_msk = false(size(R.f_R)); intp_c_0_all_msk(R_c_0_all_idxs(P_eta_0 < h_eta_0)) = true;
-    intp_c_1_all_msk = false(size(R.f_R)); intp_c_1_all_msk(R_c_1_all_idxs(P_eta_1 < h_eta_1)) = true;
-    R_no_intp_idxs = R.R_idxs((c_0_patch_msk | c_1_patch_msk) & ~(intp_c_0_all_msk | intp_c_1_all_msk));
+    R_c_0_bnd_idxs = [R_c_0_all_idxs(P_eta_0 < h_eta_0), P_eta_0(P_eta_0 < h_eta_0)];
+    R_c_1_bnd_idxs = [R_c_1_all_idxs(P_eta_1 < h_eta_1), P_eta_1(P_eta_1 < h_eta_1)];
     
-    intp_c_0_msk = intp_c_0_all_msk & ~intp_c_1_all_msk;
-    intp_c_1_msk = intp_c_1_all_msk & ~intp_c_0_all_msk;
-    intp_c_0_1_msk = intp_c_0_all_msk & intp_c_1_all_msk;
-    R_c_0_intp_idxs = [R_c_0_all_idxs(intp_c_0_msk(R_c_0_all_idxs)), c_0_all_idxs(intp_c_0_msk(R_c_0_all_idxs))];
-    R_c_1_intp_idxs = [R_c_1_all_idxs(intp_c_1_msk(R_c_1_all_idxs)), c_1_all_idxs(intp_c_1_msk(R_c_1_all_idxs))];
-    R_c_0_1_intp_m_0_idxs = [R_c_0_all_idxs(intp_c_0_1_msk(R_c_0_all_idxs)), c_0_all_idxs(intp_c_0_1_msk(R_c_0_all_idxs))];
-    R_c_0_1_intp_m_1_idxs = [R_c_1_all_idxs(intp_c_0_1_msk(R_c_1_all_idxs)), c_1_all_idxs(intp_c_0_1_msk(R_c_1_all_idxs))];
+    R_c_0_n_bnd_idxs = R_c_0_all_idxs(P_eta_0 >= h_eta_0);
+    R_c_1_n_bnd_idxs = R_c_1_all_idxs(P_eta_1 >= h_eta_1);
+    
+    R_bnd_idxs = [R_c_0_bnd_idxs; R_c_1_bnd_idxs];
+    R_n_bnd_idxs = [R_c_0_n_bnd_idxs; R_c_1_n_bnd_idxs];
 end
 
