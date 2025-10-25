@@ -25,7 +25,8 @@
 All of this code was written and tested on MATLAB2021a but should work on other versions as well.
 
 ### Prerequisites
-N/A
+Code Tested on MATLAB 2024
+Symbolic Math Toolbox
 
 ### Installation
 N/A
