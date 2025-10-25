@@ -181,12 +181,13 @@ classdef R_cartesian_mesh_obj < handle
             obj.fc_coeffs = fftshift(fft2(obj.f_R) / numel(obj.f_R));
         end
         
-        function [R_X_err, R_Y_err, f_interpolation, interior_idx] = ifft_interpolation(obj, h_new)
-            n_x_err = round((obj.x_end+obj.h-h_new-obj.x_start)/h_new)+1;
-            n_y_err = round((obj.y_end+obj.h-h_new-obj.y_start)/h_new)+1;
+        function [R_X_err, R_Y_err, f_interpolation, interior_idx] = ifft_interpolation(obj, rho_err)
+            h_err = obj.h/rho_err;
+            n_x_err = round((obj.x_end+obj.h-h_err-obj.x_start)/h_err)+1;
+            n_y_err = round((obj.y_end+obj.h-h_err-obj.y_start)/h_err)+1;
             
-            x_err_mesh = transpose(round((linspace(obj.x_start, obj.x_end+obj.h-h_new, n_x_err)-obj.x_start)/h_new)*h_new+obj.x_start);
-            y_err_mesh = transpose(round((linspace(obj.y_start, obj.y_end+obj.h-h_new, n_y_err)-obj.y_start)/h_new)*h_new+obj.y_start);
+            x_err_mesh = transpose(round((linspace(obj.x_start, obj.x_end+obj.h-h_err, n_x_err)-obj.x_start)/h_err)*h_err+obj.x_start);
+            y_err_mesh = transpose(round((linspace(obj.y_start, obj.y_end+obj.h-h_err, n_y_err)-obj.y_start)/h_err)*h_err+obj.y_start);
             
             [R_X_err, R_Y_err] = meshgrid(x_err_mesh, y_err_mesh);
 

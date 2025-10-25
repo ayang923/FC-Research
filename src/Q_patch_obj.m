@@ -351,7 +351,8 @@ classdef Q_patch_obj < handle
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);    
             
             w_unnormalized =  main_w(XI_overlap, ETA_overlap);
-            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+            initial_guesses = [linspace(window_xi_corner, window_patch.xi_end, 20); window_patch.eta_start * ones(1, 20)];
+            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, initial_guesses);
         end
         
         function apply_w_normalization_xi_left(obj, window_patch)
@@ -381,7 +382,8 @@ classdef Q_patch_obj < handle
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);                
             
             w_unnormalized = main_w(XI_overlap, ETA_overlap);
-            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);        
+            initial_guesses = [linspace(window_xi_corner, window_patch.xi_end, 20); window_patch.eta_start * ones(1, 20)];
+            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, initial_guesses);        
         end
     
         function apply_w_normalization_eta_up(obj, window_patch)
@@ -411,7 +413,8 @@ classdef Q_patch_obj < handle
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);         
             
             w_unnormalized = main_w(XI_overlap, ETA_overlap);
-            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+            initial_guesses = [linspace(window_patch.xi_start, window_xi_corner, 20);window_patch.eta_start * ones(1, 20)];
+            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, initial_guesses);
         end
         
         function apply_w_normalization_eta_down(obj, window_patch)
@@ -441,7 +444,8 @@ classdef Q_patch_obj < handle
             [X_overlap, Y_overlap] = obj.convert_to_XY(XI_overlap, ETA_overlap);        
             
             w_unnormalized = main_w(XI_overlap, ETA_overlap);
-            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, nan);
+            initial_guesses = [linspace(window_patch.xi_start, window_xi_corner, 20);window_patch.eta_start * ones(1, 20)];
+            obj.apply_w(w_unnormalized, window_patch, true, window_w, X_overlap, Y_overlap, XI_j, ETA_j, initial_guesses);
         end
         
         function apply_w(obj, w_unnormalized, window_patch, window_patch_bound_xi, window_w, overlap_X, overlap_Y, overlap_XI_j, overlap_ETA_j, initial_guesses)            
@@ -459,10 +463,17 @@ classdef Q_patch_obj < handle
                     
                     for initial_guess = initial_guesses
                         [window_patch_xi, window_patch_eta, converged] = window_patch.inverse_M_p(overlap_X(i, j), overlap_Y(i, j), initial_guesses);
-                        if window_patch_bound_xi
-                            in_VpR = window_patch_xi >= window_patch.xi_start && window_patch_xi <= window_patch.xi_end;
+                        if i == 1 && j ==1
+                            in_VpR = window_patch.in_patch(window_patch_xi, window_patch_eta);
+                            if ~in_VpR
+                                warning("First Point when computing overlaps for POU should be in patch, something may be wrong with geometry");
+                            end
                         else
-                            in_VpR = window_patch_eta >= window_patch.eta_start && window_patch_eta <= window_patch.eta_end;
+                            if window_patch_bound_xi
+                                in_VpR = window_patch_xi >= window_patch.xi_start && window_patch_xi <= window_patch.xi_end;
+                            else
+                                in_VpR = window_patch_eta >= window_patch.eta_start && window_patch_eta <= window_patch.eta_end;
+                            end
                         end
 
                         if converged && in_VpR
@@ -541,7 +552,7 @@ function [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_xi_overlap_mesh(main_p
     
     if window_patch_right
         xi_corner_j = ceil((xi_corner - main_patch.xi_start) / h_xi);
-        [XI_j, ETA_j] = meshgrid(xi_corner_j:(main_patch.n_xi-1), 0:(main_patch.n_eta-1));        
+        [XI_j, ETA_j] = meshgrid((main_patch.n_xi-1):-1:xi_corner_j, 0:(main_patch.n_eta-1));        
     else
         xi_corner_j = floor((xi_corner - main_patch.xi_start) / h_xi);
         [XI_j, ETA_j] = meshgrid(0:xi_corner_j, 0:(main_patch.n_eta-1));
@@ -605,7 +616,7 @@ function [XI_overlap, ETA_overlap, XI_j, ETA_j] = compute_eta_overlap_mesh(main_
     
     if window_patch_up
         eta_corner_j = ceil((eta_corner - main_patch.eta_start) / h_eta);
-        [XI_j, ETA_j] = meshgrid(0:(main_patch.n_xi-1), eta_corner_j:(main_patch.n_eta-1));        
+        [XI_j, ETA_j] = meshgrid(0:(main_patch.n_xi-1), (main_patch.n_eta-1):-1:eta_corner_j);        
     else
         eta_corner_j = floor((eta_corner - main_patch.eta_start) / h_eta);
         [XI_j, ETA_j] = meshgrid(0:(main_patch.n_xi-1), 0:eta_corner_j);
