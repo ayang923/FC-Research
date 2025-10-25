@@ -58,13 +58,15 @@ classdef Curve_seq_obj < handle
                 S_patch = curr.construct_S_patch(@(x, y) zeros(size(x)), d, nan, nan);
                 C_patch = curr.construct_C_patch(@(x, y) zeros(size(x)), d, nan, nan);
                 
-                [X, Y] = S_patch.Q.xy_mesh;
-                scatter(X(:), Y(:));%,patches{2*i-1}.Q.f_XY(:));
+                [boundary_X, boundary_Y] = S_patch.Q.boundary_mesh_xy(1, false);
+                plot(boundary_X(:), boundary_Y(:));%,patches{2*i-1}.Q.f_XY(:));
+                
                 hold on;
-                [X, Y] = C_patch.L.xy_mesh;
-                scatter(X(:), Y(:));%,patches{2*i}.L.f_XY);
-                [X, Y] = C_patch.W.xy_mesh;
-                scatter(X(:), Y(:));
+                [boundary_X, boundary_Y] = C_patch.L.boundary_mesh_xy(1, false);
+                plot(boundary_X(:), boundary_Y(:));%,patches{2*i}.L.f_XY);
+                
+                [boundary_X, boundary_Y] = C_patch.W.boundary_mesh_xy(1, false);
+                plot(boundary_X(:), boundary_Y(:));
 
                 curr = curr.next_curve;
             end
