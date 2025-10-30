@@ -210,13 +210,14 @@ function [well_interior_msk, s_patch_msks, c_0_patch_msks, c_1_patch_msks] = gen
         c_0_patch = c_0_patches{i};
         c_1_patch = c_1_patches{i};
         
-        if isobject(c_0_patch) && isobject(c_1_patch)
+        if isobject(c_0_patch)
             [bound_X, bound_Y] = c_0_patch.boundary_mesh_xy(n_r, false);
             in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
             c_0_patch_msks{i} = in_patch;
             well_interior_msk = well_interior_msk & ~in_patch;
-
-
+        end
+        
+        if  isobject(c_1_patch)
             [bound_X, bound_Y] = c_1_patch.boundary_mesh_xy(n_r, false);
             in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
             c_1_patch_msks{i} = in_patch;
@@ -226,8 +227,8 @@ function [well_interior_msk, s_patch_msks, c_0_patch_msks, c_1_patch_msks] = gen
             C1_corner = s_patches{i}.M_p(1, 0)';
             well_interior_msk = well_interior_msk & ((C1_corner(1)-R.R_X).^2 + (C1_corner(2)-R.R_Y).^2 > (M*R.h).^2);
                 
-            c_0_patch_msks{i} = nan;
             c_1_patch_msks{i} = nan;
+            c_0_patch_msks{mod(i, length(s_patch_msks))+1} = nan;
         end
     end
 end

@@ -74,7 +74,6 @@ classdef IE_curve_seq_obj < handle
         end
         
         function [s_patches, c_0_patches, c_1_patches] = construct_interior_patches(obj, curve_param, h_norm, M, eps_xi_eta, eps_xy)
-            
             % Computing theta thresholds
             curr = obj.first_curve;
             for i = 1:obj.n_curves
@@ -93,7 +92,7 @@ classdef IE_curve_seq_obj < handle
                 else
                     curr.C2_corner = false;
                     curr.c_1_theta_thresh = 1;
-                    curr.next_curve.corner_0_theta_tresh = 0;
+                    curr.next_curve.c_0_theta_thresh = 0;
                 end
                 curr = curr.next_curve;
             end
