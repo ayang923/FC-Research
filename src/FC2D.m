@@ -30,7 +30,7 @@ function [R, interior_patches, FC_patches, fc_err] = FC2D(f, h, curve_seq, eps_x
     R.fill_interior(f);
     
     R.compute_fc_coeffs();
-    [R_X_err, R_Y_err, f_interpolation, interior_idx] = R.ifft_interpolation(R.h/2);
+    [R_X_err, R_Y_err, f_interpolation, interior_idx] = R.ifft_interpolation(2);
     f_exact = f(R_X_err, R_Y_err);
     fc_err = max(abs(f_exact(interior_idx) - f_interpolation(interior_idx)));
     disp(['fc error: ', num2str(max(abs(f_exact(interior_idx) - f_interpolation(interior_idx)), [], 'all'))])
