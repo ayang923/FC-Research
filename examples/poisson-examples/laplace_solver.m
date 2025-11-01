@@ -109,62 +109,26 @@ for i = 1:curve_seq.n_curves
 end
 
 %% Evaluating points in corner patches using refinements
-curr = IE_curve_seq.first_curve;
+c_pts_msk = R.in_interior & ~well_interior_msk;
 
-disp('corner')
-R_bnd_idxs_cell = cell(IE_curve_seq.n_curves);
-for curve_idx = 1:IE_curve_seq.n_curves
-    next = curr.next_curve;
-    
-    % C2-type corner case
-    if curr.C2_corner
-        % corner patches
-        c_1_patch = c_1_patches{curve_idx};
-        c_0_patch = c_0_patches{next.curve_idx};
-
-        % Computing function values of cartesian points in c_0 and c_1 patches
-        c_0_patch_msk = c_0_patch_msks{next.curve_idx};
-        c_1_patch_msk = c_1_patch_msks{curve_idx};
-
-        [~, h_eta_0] = c_0_patch.h_mesh;
-        [~, h_eta_1] = c_1_patch.h_mesh;
-        [~, P_eta_0] = R_xi_eta_inversion(R, c_0_patch, c_0_patch_msk);
-        [~, P_eta_1] = R_xi_eta_inversion(R, c_1_patch, c_1_patch_msk);
-
-        [R_bnd_idxs_c, R_n_bnd_idxs_c] = construct_R_c_idxs(R, c_0_patch_msk, c_1_patch_msk, h_eta_0, h_eta_1, P_eta_0, P_eta_1);
-    else
-        C1_corner = [curr.l_1(1); curr.l_2(1)];
-        
-        R_bnd_idxs_c_msk = R.in_interior & ((C1_corner(1)-R.R_X).^2 + (C1_corner(2)-R.R_Y).^2 < (R.h).^2) & ~(s_patch_msks{curve_idx} | s_patch_msks{next.curve_idx});
-        R_bnd_idxs_c = [R.R_idxs(R_bnd_idxs_c_msk), sqrt((C1_corner(1)-R.R_X(R_bnd_idxs_c_msk)).^2 + (C1_corner(2)-R.R_Y(R_bnd_idxs_c_msk)).^2)];
-        R_n_bnd_idxs_c = R.R_idxs(R.in_interior & ~R_bnd_idxs_c_msk & ~well_interior_msk & ~(s_patch_msks{curve_idx} | s_patch_msks{next.curve_idx}));
-    end
-    
-    R_bnd_idxs_cell{curve_idx} = R_bnd_idxs_c;
-     for i = 1:length(R_n_bnd_idxs_c)
-        u_num_mat(R_n_bnd_idxs_c(i)) = IE_curve_seq.u_num(R.R_X(R_n_bnd_idxs_c(i)), R.R_Y(R_n_bnd_idxs_c(i)), curve_param_fine, gr_phi_fine);
-    end
-    curr = curr.next_curve;
+for i = 1:length(s_patch_msks)
+    c_pts_msk = c_pts_msk & ~s_patch_msks{i};
 end
 
-total_bnd_idxs = 0;
-for curve_idx = 1:IE_curve_seq.n_curves
-    total_bnd_idxs = total_bnd_idxs + size(R_bnd_idxs_cell{curve_idx}, 1);
+R_idxs_c_left = R.R_idxs(c_pts_msk);
+
+% estimate distance to boundary
+dist_to_boundary = zeros(size(R_idxs_c_left));
+for i = 1:length(R_idxs_c_left)
+    dist_to_boundary(i) = sqrt(min((R.boundary_X-R.R_X(R_idxs_c_left(i))).^2+(R.boundary_Y-R.R_Y(R_idxs_c_left(i))).^2));
 end
 
-R_bnd_idxs = zeros(total_bnd_idxs, 2);
-curr_idx = 1;
-for curve_idx = 1:IE_curve_seq.n_curves
-    R_bnd_idxs_c = R_bnd_idxs_cell{curve_idx};
-    R_bnd_idxs(curr_idx:curr_idx + size(R_bnd_idxs_c, 1) - 1, :) = R_bnd_idxs_c;
-    curr_idx = curr_idx + size(R_bnd_idxs_c, 1);
-end
+% compute points in decreasing distance order
+[~, trav_order] = sort(dist_to_boundary, 'descend');
+R_idxs_c_left = R_idxs_c_left(trav_order);
 
-% sorts boundary idxs in order of distance from boundary
-R_bnd_idxs = sortrows(R_bnd_idxs, -2);
-
-for i = 1:size(R_bnd_idxs, 1)
-    x = R.R_X(R_bnd_idxs(i)); y = R.R_Y(R_bnd_idxs(i));
+for i = 1:size(R_idxs_c_left, 1)
+    x = R.R_X(R_idxs_c_left(i)); y = R.R_Y(R_idxs_c_left(i));
 
     u_num_coarse_val = IE_curve_seq.u_num(x, y, curve_param_coarse, gr_phi_coarse);
     u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
@@ -180,7 +144,7 @@ for i = 1:size(R_bnd_idxs, 1)
         u_num_coarse_val = u_num_fine_val;
         u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
     end
-    u_num_mat(R_bnd_idxs(i)) = u_num_coarse_val;
+    u_num_mat(R_idxs_c_left(i)) = u_num_coarse_val;
 end
 
 u_num_mat(~R.in_interior) = nan;
