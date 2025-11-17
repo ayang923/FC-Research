@@ -33,6 +33,12 @@ function [R, interior_patches, FC_patches, fc_err] = FC2D(f, h, curve_seq, eps_x
     [R_X_err, R_Y_err, f_interpolation, interior_idx] = R.ifft_interpolation(2);
     f_exact = f(R_X_err, R_Y_err);
     fc_err = max(abs(f_exact(interior_idx) - f_interpolation(interior_idx)));
-    disp(['fc error: ', num2str(max(abs(f_exact(interior_idx) - f_interpolation(interior_idx)), [], 'all'))])
+    disp(['abs max error: ', num2str(fc_err)]);
+
+    fc_err = max(abs(f_exact(interior_idx) - f_interpolation(interior_idx)))/max(abs(f_exact(interior_idx)));
+    disp(['rel max error: ', num2str(fc_err)]);
+
+    fc_err = sqrt(sum((f_exact(interior_idx) - f_interpolation(interior_idx)).^2)./sum((f_exact(interior_idx).^2)));
+    disp(['rel 2 error: ', num2str(fc_err)])
 end
 
