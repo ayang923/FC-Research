@@ -1,15 +1,13 @@
 clc; clear; close all;
 
-f = @(x, y) 10^2*sin(10*(x-1)).*sin(10*(y-1));
-u_boundary = @(x, y) -1/2.*sin(10*(x-1)).*sin(10*(y-1));
+f = @(x, y) (3*pi)^2*sin(3*pi*(x-1)).*sin(3*pi*(y-1));
+u_boundary = @(x, y) -1/2.*sin(3*pi*(x-1)).*sin(3*pi*(y-1));
 
 alph = 1/2;
 bet = tan(alph*pi/2);
 
 h = 0.002;
 curve_seq = Curve_seq_obj();
-
-n_frac_C = 0.2;
 
 l_1 = @(theta) 2*sin(0.25*theta*pi);
 l_2 = @(theta) -bet*sin(0.25*theta*2*pi);
@@ -98,7 +96,7 @@ n_frac_S_1 = 0.7;
 
 curve_seq.add_curve(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, n_curve, n_frac_C_0, n_frac_C_1, n_frac_S_0, n_frac_S_1, h_norm);
 
-d = 4;
+d = 5;
 C = 27;
 n_r = 6;
 M = d+3;
@@ -118,10 +116,13 @@ load(['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat']);
 A = double(A);
 Q = double(Q);
 
+d
+h
 curve_seq.plot_geometry(d);
-
-[u_num_mat, R] = poisson_solver(curve_seq, f, u_boundary, h, 1, p, 1e-10, 1e-13, 1e-13, d, C, n_r, A, Q, M);
+tic;
+[u_num_mat, R] = poisson_solver(curve_seq, f, u_boundary, h, 1, p, 1e-14, 1e-13, 1e-13, d, C, n_r, A, Q, M);
 u_exact = u_boundary(R.R_X, R.R_Y);
+toc
 
 abs_max_err = max(abs(u_num_mat(R.in_interior)- u_exact(R.in_interior)), [], 'all')
 rel_2_err = sqrt(sum((u_num_mat(R.in_interior)-u_exact(R.in_interior)).^2, 'all') / sum(u_exact(R.in_interior).^2, 'all'))
