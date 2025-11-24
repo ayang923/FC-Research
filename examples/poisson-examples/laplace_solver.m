@@ -19,7 +19,7 @@ gr_phi_rho1 = A_rho1 \ b_rho1;
 gr_phi_fft_rho1 = fftshift(fft(gr_phi_rho1))/curve_param_rho1.n_total;
 
 [s_patches, c_0_patches, c_1_patches] = IE_curve_seq.construct_interior_patches(curve_param_rho1, R.h, M, eps_xi_eta, eps_xy);
-[well_interior_msk, s_patch_msks, c_0_patch_msks, c_1_patch_msks] = gen_R_msks(R, rho, s_patches, c_0_patches, c_1_patches);
+[well_interior_msk, s_patch_msks] = gen_R_msks(R, rho, s_patches, c_0_patches, c_1_patches);
 
 %% Fills in points that are well within the domain
 u_num_mat = zeros(size(R.f_R));
@@ -157,11 +157,9 @@ function [gr_phi_rho, curve_param_rho] = refine_gr_phi(curve_param_rho1, rho_IE,
     gr_phi_rho = rho_IE*curve_param_rho1.n_total*real(ifft(ifftshift(padded_fft_coeffs)));
 end
 
-function [well_interior_msk, s_patch_msks, c_0_patch_msks, c_1_patch_msks] = gen_R_msks(R, n_r, s_patches, c_0_patches, c_1_patches)
+function [well_interior_msk, s_patch_msks] = gen_R_msks(R, n_r, s_patches, c_0_patches, c_1_patches)
     well_interior_msk = R.in_interior;
     s_patch_msks = cell(size(s_patches));
-    c_0_patch_msks = cell(size(c_0_patches));
-    c_1_patch_msks = cell(size(c_1_patches));
     
     for i = 1:length(s_patch_msks)
         %S_patch
@@ -177,37 +175,21 @@ function [well_interior_msk, s_patch_msks, c_0_patch_msks, c_1_patch_msks] = gen
         if isobject(c_0_patch)
             [bound_X, bound_Y] = c_0_patch.boundary_mesh_xy(n_r, false);
             in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
-            c_0_patch_msks{i} = in_patch;
             well_interior_msk = well_interior_msk & ~in_patch;
         end
         
         if  isobject(c_1_patch)
             [bound_X, bound_Y] = c_1_patch.boundary_mesh_xy(n_r, false);
             in_patch = inpolygon_mesh(R.R_X, R.R_Y, bound_X, bound_Y) & R.in_interior;
-            c_1_patch_msks{i} = in_patch;
             well_interior_msk = well_interior_msk & ~in_patch;
-        else
-            M = s_patches{i}.n_eta;
-            C1_corner = s_patches{i}.M_p(1, 0)';
-            well_interior_msk = well_interior_msk & ((C1_corner(1)-R.R_X).^2 + (C1_corner(2)-R.R_Y).^2 > (M*R.h).^2);
-                
-            c_1_patch_msks{i} = nan;
-            c_0_patch_msks{mod(i, length(s_patch_msks))+1} = nan;
         end
     end
-end
 
-function [R_bnd_idxs, R_n_bnd_idxs] = construct_R_c_idxs(R, c_0_patch_msk, c_1_patch_msk, h_eta_0, h_eta_1, P_eta_0, P_eta_1)
-    R_c_0_all_idxs = R.R_idxs(c_0_patch_msk);
-    R_c_1_all_idxs = R.R_idxs(c_1_patch_msk);
-    
-    R_c_0_bnd_idxs = [R_c_0_all_idxs(P_eta_0 < h_eta_0), P_eta_0(P_eta_0 < h_eta_0)];
-    R_c_1_bnd_idxs = [R_c_1_all_idxs(P_eta_1 < h_eta_1), P_eta_1(P_eta_1 < h_eta_1)];
-    
-    R_c_0_n_bnd_idxs = R_c_0_all_idxs(P_eta_0 >= h_eta_0);
-    R_c_1_n_bnd_idxs = R_c_1_all_idxs(P_eta_1 >= h_eta_1);
-    
-    R_bnd_idxs = [R_c_0_bnd_idxs; R_c_1_bnd_idxs];
-    R_n_bnd_idxs = [R_c_0_n_bnd_idxs; R_c_1_n_bnd_idxs];
+    for i = 1:length(s_patch_msks)
+        M = s_patches{i}.n_eta;
+        corner = s_patches{i}.M_p(1, 0)';
+        well_interior_msk = well_interior_msk & ((corner(1)-R.R_X).^2 + (corner(2)-R.R_Y).^2 > (M*R.h).^2);
+        s_patch_msks{i} = s_patch_msks{i} & ((corner(1)-R.R_X).^2 + (corner(2)-R.R_Y).^2 > (M*R.h).^2);
+        s_patch_msks{mod(i, length(s_patch_msks))+1} = s_patch_msks{mod(i, length(s_patch_msks))+1} & ((corner(1)-R.R_X).^2 + (corner(2)-R.R_Y).^2 > (M*R.h).^2);
+    end
 end
-
