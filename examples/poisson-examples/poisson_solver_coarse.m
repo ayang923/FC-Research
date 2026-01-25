@@ -1,4 +1,4 @@
-function [u_num_mat, R] = poisson_solver_coarse(curve_seq, f, u_boundary, h, G_cf, p, int_eps, eps_xi_eta, eps_xy, d, C, n_r, A, Q, M, h_eval)
+function [u_num_mat, R, R_eval] = poisson_solver_coarse(curve_seq, f, u_boundary, h, G_cf, p, int_eps, eps_xi_eta, eps_xy, d, C, n_r, A, Q, M, h_eval)
 %POISSON_SOLVER Summary of this function goes here
 %   Detailed explanation goes here
 [R, ~, ~, fc_err] = FC2D(f, h, curve_seq, eps_xi_eta, eps_xy, d, C, n_r, A, Q, C, A, Q, M);

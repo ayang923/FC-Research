@@ -20,6 +20,45 @@ gr_phi_fft_rho1 = fftshift(fft(gr_phi_rho1))/curve_param_rho1.n_total;
 [s_patches, c_0_patches, c_1_patches] = IE_curve_seq.construct_interior_patches(curve_param_rho1, R.h, M, eps_xi_eta, eps_xy);
 [well_interior_msk, s_patch_msks] = gen_R_msks(R_eval, rho, s_patches, c_0_patches, c_1_patches);
 
+% computes xi-eta transformation for s_patch points
+interpol_nodes_x = [];
+interpol_nodes_y = [];
+interpol_target_eta = [];
+interpol_target_idx = [];
+
+for i = 1:curve_seq.n_curves
+    s_patch = s_patches{i};
+    [~, h_thresh] = s_patch.h_mesh;
+    in_patch = s_patch_msks{i};
+    R_s_idxs = R_eval.R_idxs(in_patch);
+
+    needs_interpol_msk = false(length(R_s_idxs), 1);
+
+    [P_xi_s, P_eta_s] = R_xi_eta_inversion(R_eval, s_patch, in_patch);
+
+    for idx = 1:length(R_s_idxs)
+        if s_patch.in_patch(P_xi_s(idx), P_eta_s(idx))
+            if P_eta_s(idx) < h_thresh
+                needs_interpol_msk(idx) = true;
+            else
+                well_interior_msk(R_s_idxs(idx)) = true;
+            end
+        else
+            s_patch_msks{i}(R_s_idxs(idx)) = false;
+        end
+    end
+
+    n_interpol = sum(needs_interpol_msk);
+    interpol_target_eta = [interpol_target_eta; P_eta_s(needs_interpol_msk)];
+    interpol_target_idx = [interpol_target_idx; R_s_idxs(needs_interpol_msk)];
+
+    interpol_mesh_xi_patch = repmat(P_xi_s(needs_interpol_msk), 1, M);
+    interpol_mesh_eta_patch = repmat((0:(M-1))*h_thresh, n_interpol, 1);
+    [interpol_nodes_x_patch, interpol_nodes_y_patch] = s_patch.convert_to_XY(interpol_mesh_xi_patch, interpol_mesh_eta_patch);
+    interpol_nodes_x = [interpol_nodes_x; interpol_nodes_x_patch];
+    interpol_nodes_y = [interpol_nodes_y; interpol_nodes_y_patch];
+end
+
 %% Fills in points that are well within the domain
 u_num_mat = zeros(size(R_eval.f_R));
 u_num_mat_fine = zeros(size(R_eval.f_R));
@@ -49,106 +88,89 @@ end
 
 % %% Evaluating points in s_patches
 % % refine one more time
-% rho_coarse_IE = rho_fine_IE;
-% gr_phi_coarse = gr_phi_fine;
-% curve_param_coarse = curve_param_fine;
-% 
-% rho_fine_IE = rho_coarse_IE + 1;
-% [gr_phi_fine, curve_param_fine] = refine_gr_phi(curve_param_rho1, rho_fine_IE, gr_phi_fft_rho1);
-% 
-% disp('s patches')
-% % excludes boundary
-% for eta_idx = M:-1:2
-%     for i = 1:curve_seq.n_curves
-%         s_patch = s_patches{i};
-%         [patch_X_s, patch_Y_s] = s_patch.xy_mesh;
-%         for xi_idx = 1:s_patch.n_xi
-%             x = patch_X_s(eta_idx, xi_idx); y = patch_Y_s(eta_idx, xi_idx);
-%             u_num_coarse_val = IE_curve_seq.u_num(x, y, curve_param_coarse, gr_phi_coarse);
-%             u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
-% 
-%             while abs(u_num_coarse_val - u_num_fine_val) > int_eps
-%                 rho_coarse_IE = rho_fine_IE;
-%                 curve_param_coarse = curve_param_fine;
-%                 gr_phi_coarse = gr_phi_fine;
-% 
-%                 rho_fine_IE = rho_coarse_IE + 1
-%                 [gr_phi_fine, curve_param_fine] = refine_gr_phi(curve_param_rho1, rho_fine_IE, gr_phi_fft_rho1);
-% 
-%                 u_num_coarse_val = u_num_fine_val;
-%                 u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
-%             end
-%             s_patch.f_XY(eta_idx, xi_idx) = u_num_coarse_val;
-%         end
-%     end
-% end
-% 
-% % boundary value computation
-% for i = 1:curve_seq.n_curves
-%     s_patch = s_patches{i};
-%     [patch_X, patch_Y] = s_patch.xy_mesh;
-% 
-%     s_patch.f_XY(1, :) = u_G(patch_X(1, :), patch_Y(1, :));
-% end
-% 
-% for i = 1:curve_seq.n_curves
-%     s_patch = s_patches{i};
-%     in_patch = s_patch_msks{i};
-%     R_s_idxs = R_eval.R_idxs(in_patch);
-% 
-%     [P_xi_s, P_eta_s] = R_xi_eta_inversion(R_eval, s_patch, in_patch);
-% 
-%     for idx = 1:length(R_s_idxs)
-%         if s_patch.in_patch(P_xi_s(idx), P_eta_s(idx))
-%             u_num_mat(R_s_idxs(idx)) = s_patch.locally_compute(P_xi_s(idx), P_eta_s(idx), M);
-%         else
-%             s_patch_msks{i}(R_s_idxs(idx)) = false;
-%         end
-%     end
-% end
+rho_coarse_IE = rho_fine_IE;
+gr_phi_coarse = gr_phi_fine;
+curve_param_coarse = curve_param_fine;
 
-% %% Evaluating points in corner patches using refinements
-% disp('corner points')
-% c_pts_msk = R_eval.in_interior & ~well_interior_msk;
-% 
-% for i = 1:length(s_patch_msks)
-%     c_pts_msk = c_pts_msk & ~s_patch_msks{i};
-% end
-% 
-% R_idxs_c_left = R_eval.R_idxs(c_pts_msk);
-% 
-% % estimate distance to boundary
-% dist_to_boundary = zeros(size(R_idxs_c_left));
-% for i = 1:length(R_idxs_c_left)
-%     dist_to_boundary(i) = sqrt(min((R_eval.boundary_X-R_eval.R_X(R_idxs_c_left(i))).^2+(R_eval.boundary_Y-R_eval.R_Y(R_idxs_c_left(i))).^2));
-% end
-% 
-% % compute points in decreasing distance order
-% [~, trav_order] = sort(dist_to_boundary, 'descend');
-% R_idxs_c_left = R_idxs_c_left(trav_order);
-% 
-% for i = 1:size(R_idxs_c_left, 1)
-%     x = R_eval.R_X(R_idxs_c_left(i)); y = R_eval.R_Y(R_idxs_c_left(i));
-% 
-%     u_num_coarse_val = IE_curve_seq.u_num(x, y, curve_param_coarse, gr_phi_coarse);
-%     u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
-% 
-%     while abs(u_num_coarse_val - u_num_fine_val) > int_eps
-%         rho_coarse_IE = rho_fine_IE;
-%         curve_param_coarse = curve_param_fine;
-%         gr_phi_coarse = gr_phi_fine;
-% 
-%         rho_fine_IE = rho_coarse_IE + 1
-%         [gr_phi_fine, curve_param_fine] = refine_gr_phi(curve_param_rho1, rho_fine_IE, gr_phi_fft_rho1);
-% 
-%         u_num_coarse_val = u_num_fine_val;
-%         u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
-%     end
-%     u_num_mat(R_idxs_c_left(i)) = u_num_coarse_val;
-% end
+rho_fine_IE = rho_coarse_IE + 1;
+[gr_phi_fine, curve_param_fine] = refine_gr_phi(curve_param_rho1, rho_fine_IE, gr_phi_fft_rho1);
 
-% u_num_mat(~R_eval.in_interior) = nan;
-u_num_mat(~well_interior_msk) = nan;
+disp('s patches')
+
+interpol_u = zeros(length(interpol_target_idx), M);
+%excludes boundary
+for eta_idx = M:-1:2
+    for xi_idx = 1:length(interpol_target_idx)
+        x = interpol_nodes_x(xi_idx, eta_idx); y = interpol_nodes_y(xi_idx, eta_idx);
+        u_num_coarse_val = IE_curve_seq.u_num(x, y, curve_param_coarse, gr_phi_coarse);
+        u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
+    
+        while abs(u_num_coarse_val - u_num_fine_val) > int_eps
+            rho_coarse_IE = rho_fine_IE;
+            curve_param_coarse = curve_param_fine;
+            gr_phi_coarse = gr_phi_fine;
+    
+            rho_fine_IE = rho_coarse_IE + 1
+            [gr_phi_fine, curve_param_fine] = refine_gr_phi(curve_param_rho1, rho_fine_IE, gr_phi_fft_rho1);
+    
+            u_num_coarse_val = u_num_fine_val;
+            u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
+        end
+        interpol_u(xi_idx, eta_idx) = u_num_coarse_val;
+    end
+end
+
+% boundary value computation
+interpol_u(:, 1) = u_G(interpol_nodes_x(:, 1), interpol_nodes_y(:, 1));
+
+
+for idx = 1:length(interpol_target_idx)
+    u_num_mat(interpol_target_idx(idx)) = barylag([(0:(M-1))'*R.h, interpol_u(idx, :)'], interpol_target_eta(idx));
+end
+
+%% Evaluating points in corner patches using refinements
+disp('corner points')
+c_pts_msk = R_eval.in_interior & ~well_interior_msk;
+
+for i = 1:length(s_patch_msks)
+    c_pts_msk = c_pts_msk & ~s_patch_msks{i};
+end
+
+R_idxs_c_left = R_eval.R_idxs(c_pts_msk);
+
+% estimate distance to boundary
+dist_to_boundary = zeros(size(R_idxs_c_left));
+for i = 1:length(R_idxs_c_left)
+    dist_to_boundary(i) = sqrt(min((R_eval.boundary_X-R_eval.R_X(R_idxs_c_left(i))).^2+(R_eval.boundary_Y-R_eval.R_Y(R_idxs_c_left(i))).^2));
+end
+
+% compute points in decreasing distance order
+[~, trav_order] = sort(dist_to_boundary, 'descend');
+R_idxs_c_left = R_idxs_c_left(trav_order);
+
+for i = 1:size(R_idxs_c_left, 1)
+    x = R_eval.R_X(R_idxs_c_left(i)); y = R_eval.R_Y(R_idxs_c_left(i));
+
+    u_num_coarse_val = IE_curve_seq.u_num(x, y, curve_param_coarse, gr_phi_coarse);
+    u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
+
+    while abs(u_num_coarse_val - u_num_fine_val) > int_eps
+        rho_coarse_IE = rho_fine_IE;
+        curve_param_coarse = curve_param_fine;
+        gr_phi_coarse = gr_phi_fine;
+
+        rho_fine_IE = rho_coarse_IE + 1
+        [gr_phi_fine, curve_param_fine] = refine_gr_phi(curve_param_rho1, rho_fine_IE, gr_phi_fft_rho1);
+
+        u_num_coarse_val = u_num_fine_val;
+        u_num_fine_val = IE_curve_seq.u_num(x, y, curve_param_fine, gr_phi_fine);
+
+        u_num_coarse_val - u_num_fine_val
+    end
+    u_num_mat(R_idxs_c_left(i)) = u_num_coarse_val;
+end
+
+u_num_mat(~R_eval.in_interior) = nan;
 end
 
 function [gr_phi_rho, curve_param_rho] = refine_gr_phi(curve_param_rho1, rho_IE, gr_phi_fft_rho1)
