@@ -116,5 +116,55 @@ load(['FC_data/Q_d',num2str(d),'_C', num2str(C),  '_r', num2str(n_r), '.mat']);
 A = double(A);
 Q = double(Q);
 
-h_eval = 0.004;
+h_eval = 0.02;
 [u_num_mat, R, R_eval] = poisson_solver_coarse(curve_seq, f, u_boundary, h, 1, p, 1e-14, 1e-13, 1e-13, d, C, n_r, A, Q, M, h_eval);
+
+% Plotting using triangulation to reduce boundary stepping
+% Interior vertices (from your eval grid)
+Xint = R_eval.R_X(:);
+Yint = R_eval.R_Y(:);
+Zint = u_num_mat(:);
+
+% Boundary vertices
+[Xb, Yb] = curve_seq.construct_boundary_mesh(1);
+Zb = u_boundary(Xb, Yb);
+
+% Make sure boundary is a closed loop (append first point if needed)
+if ~(Xb(1)==Xb(end) && Yb(1)==Yb(end))
+    Xb = [Xb; Xb(1)];
+    Yb = [Yb; Yb(1)];
+    Zb = [Zb; Zb(1)];
+end
+
+% Build polygon for inside/outside test (nonconvex OK)
+P = polyshape(Xb, Yb);
+
+% Combine points
+X = [Xint; Xb];
+Y = [Yint; Yb];
+Z = [Zint; Zb];
+
+% Constrained edges for boundary (connect consecutive boundary points)
+nint = numel(Xint);
+nb   = numel(Xb);
+bidx = (nint+1):(nint+nb);
+E    = [bidx(1:end-1)' bidx(2:end)'];   % boundary edges (already closed)
+
+% Constrained Delaunay triangulation in (x,y)
+DT = delaunayTriangulation(X, Y, E);
+T  = DT.ConnectivityList;
+
+% Keep only triangles whose centroid lies inside the polygon
+xc = mean(X(T), 2);
+yc = mean(Y(T), 2);
+inside = isinterior(P, xc, yc);
+T_in = T(inside, :);
+
+% Plot triangulated surface embedded in 3D (boundary is part of the mesh)
+figure;
+trisurf(T_in, X, Y, Z, 'EdgeColor','k');  % change 'k' -> 'none' for no mesh lines
+shading interp;
+
+hold on;
+
+plot(R_eval.boundary_X, R_eval.boundary_Y, 'LineWidth', 2)

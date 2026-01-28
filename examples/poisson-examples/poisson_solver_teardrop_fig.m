@@ -36,5 +36,9 @@ Q = double(Q);
 curve_seq = Curve_seq_obj();
 curve_seq.add_curve(l_1, l_2, l_1_prime, l_2_prime, l_1_dprime, l_2_dprime, 0, n_frac_C, n_frac_C, 0, 0, h);
 
-h_eval = 0.02;
+h_eval = 0.01;
 [u_num_mat, R, R_eval] = poisson_solver_coarse(curve_seq, f, u_boundary, h, 1, p, 1e-13, 1e-13, 1e-13, d, C, n_r, A, Q, M, h_eval);
+
+figure;
+surf(R_eval.R_X, R_eval.R_Y, u_num_mat, 'EdgeColor','none');
+shading interp;
